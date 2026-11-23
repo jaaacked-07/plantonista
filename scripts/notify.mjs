@@ -52,13 +52,12 @@ const pub = (await pubRef.get()).data();
 if (!pub || pub.publicKey !== keys.publicKey) await pubRef.set({ publicKey: keys.publicKey });
 webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
 
-// Diagnóstico do código de convite (sem expor o código) e correção de espaços
+// Remove espaços acidentais do código de convite
 try {
-  const cRef = db.collection('config').doc('app'), c = await cRef.get();
-  const d = c.exists ? c.data() : null, v = d ? d.convite : undefined;
-  if (typeof v === 'string' && v !== v.trim()) await cRef.set({ ...d, convite: v.trim() });
-  await db.collection('public').doc('diag').set({ configApp: c.exists, campos: d ? Object.keys(d) : [], tipo: typeof v, tamanho: typeof v === 'string' ? v.trim().length : 0, tinhaEspacos: typeof v === 'string' && v !== v.trim(), colecoes: (await db.listCollections()).map(x => x.id), quando: new Date().toISOString() });
-} catch (e) { console.log('Diag falhou:', e.message); }
+  const cRef = db.collection('config').doc('app'), c = await cRef.get(), d = c.exists ? c.data() : null;
+  if (d && typeof d.convite === 'string' && d.convite !== d.convite.trim()) await cRef.set({ ...d, convite: d.convite.trim() });
+  await db.collection('public').doc('diag').delete().catch(() => {});
+} catch (e) { console.log('Convite:', e.message); }
 
 async function processUser(U) {
   const subsSnap = await U.collection('subs').get();

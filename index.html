@@ -497,7 +497,7 @@ function renderLogin(modo = 'entrar', erro = '') {
       try {
         await FB.fs.setDoc(FB.fs.doc(FB.db, 'users', cred.user.uid), { username:u, convite:f.c.value.trim(), criado:Date.now() });
       } catch (err) {
-        S.loginErr = 'Código de convite inválido.'; S.loginModo = 'criar';
+        S.loginErr = err.code === 'permission-denied' ? 'Código de convite inválido. Confira letras maiúsculas e minúsculas.' : 'Não foi possível criar a conta (' + (err.code || err.message) + ').'; S.loginModo = 'criar';
         S.criando = false;
         await cred.user.delete().catch(() => FB.au.signOut(FB.auth));
         if (S.loginErr) renderLogin();
