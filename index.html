@@ -111,10 +111,18 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .dia .n{font-family:var(--mono);font-size:12.5px;font-weight:500;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;margin-left:1px}
 .dia.fora .n{color:var(--cinza2);opacity:.55}
 .dia.fora .bar{opacity:.45}
-.dia.hoje .n{background:var(--roxo);color:#fff}
+.dia.hoje .n{background:var(--roxo);color:#fff;box-shadow:0 0 0 3px var(--roxo-md)}
+.dia.hoje{box-shadow:inset 0 0 0 2px var(--roxo);background:#F7F2FF}
+.dia.hoje::after{content:'hoje';position:absolute;right:4px;bottom:3px;font:700 8.5px Inter,sans-serif;color:var(--roxo);text-transform:uppercase;letter-spacing:.4px}
 .dia.sel{background:var(--roxo-cl)}
 .dia.ferias{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(107,43,214,.08) 6px 12px)}
 .dia .bar{display:block;font-style:normal;background:var(--c);color:#fff;font-family:var(--cond);font-weight:600;font-size:9.5px;letter-spacing:0;line-height:15px;height:15px;padding:0 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.dia .bar{border-left:3px solid var(--lc,var(--c));position:relative}
+.dia .bar.passado{background:color-mix(in srgb,var(--c) 28%,#fff);color:color-mix(in srgb,var(--c) 75%,#17141F)}
+.dia .bar .stb{position:absolute;right:1px;top:1px;width:13px;height:13px;border-radius:50%;font:700 9px/13px Inter,sans-serif;text-align:center;color:#fff;font-style:normal}
+.dia .bar .stb.ok{background:var(--verde)}
+.dia .bar .stb.at{background:#E08A00;animation:pisca 1.6s infinite}
+@keyframes pisca{50%{opacity:.45}}
 .dia .bar.cont{background:transparent;color:var(--c);border:1px dashed var(--c);line-height:13px}
 .dia .bar.atr{box-shadow:inset 3px 0 0 #F5A524}
 .dia .mais{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--cinza)}
@@ -140,6 +148,13 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .pc-n{font-size:13px;color:var(--cinza);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pc-r{padding:10px 4px 10px 0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}
 .pc-r .val{font-size:14px;font-weight:600}
+.pc-b{background:var(--lc,var(--c))!important}
+.pc.passado .pc-m,.pc.passado .pc-b{opacity:.55}
+.fgrp{display:flex;gap:4px;align-items:center;padding:3px 4px 3px 3px;border:1px solid var(--linha);border-left:3px solid var(--lc);border-radius:4px;background:var(--branco);flex-shrink:0}
+.fgrp .chip{border-color:transparent}
+.fgrp .chip.on{border-color:var(--roxo)}
+.chip.mini{height:26px;padding:0 9px;font-size:12px}
+.qlbl{display:inline-flex;align-items:center;height:32px;padding:0 8px;font-size:12px;font-weight:600;color:var(--c);border-left:3px solid var(--c);white-space:nowrap}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -423,6 +438,8 @@ const tagModelo = m => m.tag != null ? m.tag : tagAuto(m.nome, loc(m.localId));
 const tagP = p => { if (p.tag != null) return p.tag; const m = S.modelos.find(x => x.id === p.modeloId); return m ? tagModelo(m) : ''; };
 const modsDe = lid => sortBy(S.modelos.filter(m => m.localId === lid), m => m.ordem ?? 0);
 const gruposMod = () => { const ids = [...new Set(sortBy(S.modelos, m => m.ordem ?? 0).map(m => m.localId))]; return sortBy(ids.map(id => ({ l: loc(id), ms: modsDe(id) })), g => (g.l.arquivado ? 1e6 : 0) + (g.l.ordem ?? 999)); };
+const espDe = lid => { const ms = modsDe(lid), ts = [...new Set(ms.map(tagModelo))]; return ts.sort((a, b) => (a === '') - (b === '') || a.localeCompare(b)).map(t => ({ t, ms: ms.filter(m => tagModelo(m) === t) })); };
+const corModelo = m => tagModelo(m) ? corTag(tagModelo(m)) : loc(m.localId).cor;
 function nextDay(ds, day) {
   const [y,m,d] = ds.split('-').map(Number);
   let last = new Date(y, m, 0).getDate(), c = Math.min(day, last);
@@ -457,7 +474,7 @@ function salarios() {
 }
 const recebiveis = () => [...S.plantoes, ...salarios()];
 const rotulo = r => r.sal ? `Salário de ${mesCurto(r.ref)}` : `${ddmm(r.data)}/${r.data.slice(2,4)} ${SEMC[dow(r.data)]} · ${hh(dur(r))}`;
-const visivel = p => (!(S.cfg.filtro || []).length || S.cfg.filtro.includes(p.localId)) && (!(S.cfg.filtroTag || []).length || S.cfg.filtroTag.includes(tagP(p)));
+const visivel = p => { const fL = S.cfg.filtro || [], fT = S.cfg.filtroTag || []; return (!fL.length && !fT.length) || fL.includes(p.localId) || fT.includes(p.localId + '|' + tagP(p)); };
 const hashN = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 const corTag = t => ((S.cfg.tagCores || {})[t]) || CORES[(hashN(t) + 3) % CORES.length][0];
 const corP = p => { const t = tagP(p); return t ? corTag(t) : loc(p.localId).cor; };
@@ -576,7 +593,7 @@ function go(view) { S.view = view; location.hash = view; window.scrollTo(0, 0); 
 /* ---------- Cartão de plantão ---------- */
 function cardP(p, o = {}) {
   const l = loc(p.localId), st = status(p), esconde = o.home && priv();
-  return `<div class="pc" style="--c:${corP(p)}">
+  return `<div class="pc ${p.data < HOJE ? 'passado' : ''}" style="--c:${corP(p)};--lc:${l.cor}">
     <div class="pc-b"></div>
     <button class="pc-m" data-act="editP" data-id="${p.id}">
       <div class="pc-t">${p.importante ? '<span class="star">★</span>' : ''}${esc(l.nome)}${tagP(p) ? ` <span class="tagp">${esc(tagP(p))}</span>` : ''}</div>
@@ -602,7 +619,9 @@ function vAgenda() {
       <button class="ib" data-act="modo" aria-label="Alternar visão">${ic(S.modo === 'mes' ? 'list' : 'cal')}</button>
     </div></div>`;
   const locs = locaisAtivos();
-  const filtros = locs.length > 1 || tagsUsadas().length > 1 ? `<div class="filtros">${locs.map(l => `<button class="chip ${(S.cfg.filtro||[]).includes(l.id) ? 'on' : ''}" style="--c:${l.cor}" data-act="filtro" data-id="${l.id}"><span class="dot"></span>${esc(l.nome)}</button>`).join('')}${tagsUsadas().length > 1 ? tagsUsadas().map(t => `<button class="chip ${(S.cfg.filtroTag||[]).includes(t) ? 'on' : ''}" style="--c:${corTag(t)}" data-act="filtroTag" data-id="${esc(t)}"><span class="dot"></span>${esc(t)}</button>`).join('') : ''}${(S.cfg.filtro||[]).length || (S.cfg.filtroTag||[]).length ? `<button class="chip" data-act="filtroLimpa">Todos</button>` : ''}</div>` : '';
+  const fGrupos = locs.map(l => ({ l, ts: [...new Set([...S.plantoes.filter(p => p.localId === l.id).map(tagP), ...modsDe(l.id).map(tagModelo)].filter(Boolean))].sort() }));
+  const fT = S.cfg.filtroTag || [], fL = S.cfg.filtro || [];
+  const filtros = locs.length > 1 || fGrupos.some(g => g.ts.length) ? `<div class="filtros">${fGrupos.map(({l, ts}) => `<div class="fgrp" style="--lc:${l.cor}"><button class="chip ${fL.includes(l.id) ? 'on' : ''}" style="--c:${l.cor}" data-act="filtro" data-id="${l.id}"><span class="dot"></span>${esc(l.nome)}</button>${ts.map(t => `<button class="chip mini ${fT.includes(l.id + '|' + t) ? 'on' : ''}" style="--c:${corTag(t)}" data-act="filtroTag" data-id="${esc(l.id + '|' + t)}"><span class="dot"></span>${esc(t)}</button>`).join('')}</div>`).join('')}${fL.length || fT.length ? `<button class="chip" data-act="filtroLimpa">Todos</button>` : ''}</div>` : '';
   const intro = !S.locais.length ? `<div class="dica" style="margin-bottom:14px"><b>Comece por aqui:</b> cadastre seus locais de trabalho e seus modelos de plantão em <b>Ajustes</b>. Depois é só tocar no <b>+</b>.<div style="margin-top:8px"><button class="btn sm p" data-act="novoLocal">Cadastrar primeiro local</button></div></div>` : '';
   const instala = isIOS && !isStandalone && !localStorage.getItem(LS('dicaInstala')) ? `<div class="dica" style="margin-bottom:14px">Para usar como app e receber lembretes: no Safari, toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. <button class="btn sm g" data-act="okInstala">Entendi</button></div>` : '';
   if (S.modo === 'lista') return top + instala + intro + filtros + vLista();
@@ -621,7 +640,7 @@ function vAgenda() {
   let cells = '';
   for (let i = 0; i < rows*7; i++) {
     const d = addD(start, i), lst = sortBy(map[d] || [], x => (x.cont ? '0' : '1') + x.p.inicio);
-    const bars = lst.slice(0, 3).map(({p, cont}) => { const l = loc(p.localId); const tg = tagP(p); return `<i class="bar ${cont ? 'cont' : ''} ${!cont && status(p) === 'atrasado' && !priv() ? 'atr' : ''}" style="--c:${corP(p)}" data-act="editP" data-id="${p.id}" ${cont ? '' : 'data-drag="1"'}>${p.importante && !cont ? '★' : ''}${esc(sigla(l))}${tg ? ' ' + esc(tg) : ''}</i>`; }).join('');
+    const bars = lst.slice(0, 3).map(({p, cont}) => { const l = loc(p.localId), tg = tagP(p), st = status(p), pas = p.data < HOJE; const badge = !cont && !priv() && pas ? (st === 'pago' ? '<b class="stb ok">✓</b>' : st === 'atrasado' ? '<b class="stb at">!</b>' : '') : ''; return `<i class="bar ${cont ? 'cont' : ''} ${pas ? 'passado' : ''}" style="--c:${corP(p)};--lc:${l.cor}" data-act="editP" data-id="${p.id}" ${cont ? '' : 'data-drag="1"'}>${p.importante && !cont ? '★' : ''}${esc(sigla(l))}${tg ? ' ' + esc(tg) : ''}${badge}</i>`; }).join('');
     cells += `<button class="dia ${d.slice(0,7) !== ym ? 'fora' : ''} ${d === HOJE ? 'hoje' : ''} ${d === S.sel ? 'sel' : ''} ${emFerias(d) ? 'ferias' : ''}" data-act="dia" data-d="${d}"><span class="n">${+d.slice(8)}</span>${bars}${lst.length > 3 ? `<i class="mais">+${lst.length - 3}</i>` : ''}</button>`;
   }
   const hdr = Array.from({length:7}, (_, i) => `<div>${SEMC[(i + ws) % 7]}</div>`).join('');
@@ -638,10 +657,12 @@ function vDia(d) {
   const lst = sortBy(S.plantoes.filter(p => p.data === d && visivel(p)), p => p.inicio);
   const ont = S.cfg.noturnoDoisDias ? S.plantoes.filter(p => p.data === addD(d, -1) && cruza(p) && visivel(p)) : [];
   const fer = S.ferias.filter(f => d >= f.inicio && d <= f.fim);
-  const gs = gruposMod(), g1 = gs.length === 1 ? gs[0].l.id : null, aberto = S.qLoc && gs.some(g => g.l.id === S.qLoc) ? S.qLoc : g1;
-  const qadd = aberto
-    ? `${!g1 ? `<button class="chip" data-act="qLoc" data-id="">${ic('l')}</button>` : ''}${modsDe(aberto).map(m => `<button class="chip" style="--c:${loc(m.localId).cor}" data-act="addMod" data-id="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`).join('')}`
-    : gs.map(g => `<button class="chip" style="--c:${g.l.cor}" data-act="qLoc" data-id="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)} <span class="muted">${g.ms.length}</span></button>`).join('');
+  const gs = gruposMod(), g1 = gs.length === 1 ? gs[0].l.id : null, locA = S.qLoc && gs.some(g => g.l.id === S.qLoc) ? S.qLoc : g1;
+  const es = locA ? espDe(locA) : [], e1 = es.length === 1 ? es[0].t : null, espA = S.qEsp != null && es.some(e => e.t === S.qEsp) ? S.qEsp : e1;
+  const voltar = (act, idv) => `<button class="chip" data-act="${act}" data-id="${esc(idv)}" aria-label="Voltar">${ic('l')}</button>`;
+  const qadd = !locA ? gs.map(g => `<button class="chip" style="--c:${g.l.cor}" data-act="qLoc" data-id="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)}</button>`).join('')
+    : espA == null ? (!g1 ? voltar('qLoc', '') : '') + `<span class="qlbl" style="--c:${loc(locA).cor}">${esc(loc(locA).nome)}</span>` + es.map(e => `<button class="chip" style="--c:${e.t ? corTag(e.t) : loc(locA).cor}" data-act="qEsp" data-id="${esc(e.t)}"><span class="dot"></span>${esc(e.t || 'Geral')} <span class="muted">${e.ms.length}</span></button>`).join('')
+    : (es.length > 1 ? voltar('qEspVolta', '') : !g1 ? voltar('qLoc', '') : '') + `<span class="qlbl" style="--c:${loc(locA).cor}">${esc(sigla(loc(locA)))}${espA ? ' · ' + esc(espA) : ''}</span>` + es.find(e => e.t === espA).ms.map(m => `<button class="chip" style="--c:${corModelo(m)}" data-act="addMod" data-id="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`).join('');
   return `<div class="diatit">${dataLonga(d)}${d === HOJE ? '<small>hoje</small>' : ''}</div>
     ${fer.map(f => `<div class="fer"><span><b>${esc(f.desc || 'Férias')}</b> · ${ddmm(f.inicio)} a ${ddmm(f.fim)}</span><button class="btn sm g" data-act="editFer" data-id="${f.id}">Editar</button></div>`).join('')}
     ${ont.map(p => `<div class="muted" style="margin-bottom:6px">Continuação: ${esc(loc(p.localId).nome)} até ${p.fim}</div>`).join('')}
@@ -851,7 +872,7 @@ function vAjustes() {
   <div class="card">${locs.length ? locs.map((l, i) => `<div class="li"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><button class="g" data-act="editLocal" data-id="${l.id}"><b>${esc(l.nome)}${l.arquivado ? ' <span class="st nota">Arquivado</span>' : ''}</b><span>${descLocal(l)}</span></button><div class="ord"><button data-act="ordL" data-id="${l.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordL" data-id="${l.id}" data-d="1" ${i === locs.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('') : `<div class="muted">Nenhum local ainda.</div>`}</div>
 
   <div class="h">Modelos de plantão<button class="btn sm p" data-act="novoModelo">${ic('plus')}Modelo</button></div>
-  <div class="card">${mods.length ? gruposMod().map(({l, ms}) => { const ab = (S.modOpen || {})[l.id]; return `<button class="li grp" data-act="modGrp" data-id="${l.id}"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(l.nome)}</b><span>${ms.length} modelo${ms.length === 1 ? '' : 's'}</span></div>${ic(ab ? 'up' : 'dn')}</button>${ab ? `<div class="subgrp">${ms.map((m, i) => `<div class="li"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><button class="g" data-act="editModelo" data-id="${m.id}"><b>${esc(m.nome)}${tagModelo(m) ? ` <span class="tagp">${esc(tagModelo(m))}</span>` : ''}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></button><div class="ord"><button data-act="ordM" data-id="${m.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordM" data-id="${m.id}" data-d="1" ${i === ms.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('')}<button class="btn sm g" data-act="novoModeloLocal" data-id="${l.id}">${ic('plus')}Modelo em ${esc(l.nome)}</button></div>` : ''}`; }).join('') : `<div class="muted">Crie modelos (ex.: "UPA 12h CM") para cadastrar plantões com um toque.</div>`}</div>
+  <div class="card">${mods.length ? gruposMod().map(({l, ms}) => { const ab = (S.modOpen || {})[l.id], es = espDe(l.id); return `<button class="li grp" data-act="modGrp" data-id="${l.id}"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(l.nome)}</b><span>${es.length} especialidade${es.length === 1 ? '' : 's'} · ${ms.length} modelo${ms.length === 1 ? '' : 's'}</span></div>${ic(ab ? 'up' : 'dn')}</button>${ab ? `<div class="subgrp">${es.map(e => { const k = l.id + '|' + e.t, abE = (S.modOpen || {})[k]; return `<button class="li grp" data-act="modGrp" data-id="${esc(k)}"><span class="sq" style="--c:${e.t ? corTag(e.t) : l.cor};width:auto;min-width:30px;padding:0 6px">${esc(e.t || '—')}</span><div class="g"><b>${esc(e.t || 'Sem especialidade')}</b><span>${e.ms.length} modelo${e.ms.length === 1 ? '' : 's'}</span></div>${ic(abE ? 'up' : 'dn')}</button>${abE ? `<div class="subgrp">${e.ms.map((m, i) => `<div class="li"><span class="sq" style="--c:${corModelo(m)}">${hh(dur(m))}</span><button class="g" data-act="editModelo" data-id="${m.id}"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></button><div class="ord"><button data-act="ordM" data-id="${m.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordM" data-id="${m.id}" data-d="1" ${i === e.ms.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('')}</div>` : ''}`; }).join('')}<button class="btn sm g" data-act="novoModeloLocal" data-id="${l.id}">${ic('plus')}Modelo em ${esc(l.nome)}</button></div>` : ''}`; }).join('') : `<div class="muted">Crie modelos (ex.: "UPA 12h CM") para cadastrar plantões com um toque.</div>`}</div>
 
   <div class="h">Lembretes</div>
   <div class="card">
@@ -1041,7 +1062,7 @@ function formPlantao(id, preset = {}) {
   const listaLocais = sortBy(S.locais.filter(l => !l.arquivado || l.id === p.localId), l => l.ordem ?? 0);
   const v = x => x ? String(x).replace('.', ',') : '';
   const b = openSheet(novo ? 'Novo plantão' : 'Editar plantão', `<form id="fp">
-    ${novo && mods.length ? `<label class="f" style="margin-bottom:6px"><span>Usar um modelo</span></label><div class="chips" data-grps style="margin-bottom:8px">${gruposMod().map(g => `<button type="button" class="chip" style="--c:${g.l.cor}" data-grp="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)}</button>`).join('')}</div>${gruposMod().map(g => `<div class="chips hide" data-mods="${g.l.id}" style="margin-bottom:14px">${g.ms.map(m => `<button type="button" class="chip" style="--c:${g.l.cor}" data-mod="${m.id}">${esc(m.nome)}</button>`).join('')}</div>`).join('')}` : ''}
+    ${novo && mods.length ? `<label class="f" style="margin-bottom:6px"><span>Usar um modelo</span></label><div class="chips" style="margin-bottom:8px">${gruposMod().map(g => `<button type="button" class="chip" style="--c:${g.l.cor}" data-grp="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)}</button>`).join('')}</div>${gruposMod().map(g => `<div class="chips hide" data-esps="${g.l.id}" style="margin-bottom:8px;padding-left:10px;border-left:3px solid ${g.l.cor}">${espDe(g.l.id).map(e => `<button type="button" class="chip" style="--c:${e.t ? corTag(e.t) : g.l.cor}" data-esp="${esc(g.l.id + '|' + e.t)}"><span class="dot"></span>${esc(e.t || 'Geral')}</button>`).join('')}</div>${espDe(g.l.id).map(e => `<div class="chips hide" data-mods="${esc(g.l.id + '|' + e.t)}" style="margin-bottom:14px;padding-left:22px">${e.ms.map(m => `<button type="button" class="chip" style="--c:${corModelo(m)}" data-mod="${m.id}">${esc(m.nome)}</button>`).join('')}</div>`).join('')}`).join('')}` : ''}
     <label class="f"><span>Local</span><select class="in" name="localId">${listaLocais.map(l => `<option value="${l.id}" ${l.id === p.localId ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>
     <label class="f"><span>Especialidade / nome do plantão</span><input class="in" name="tag" value="${esc(tagP(p))}" placeholder="CM, PED…" list="tags-p" autocapitalize="characters"><datalist id="tags-p">${[...new Set([...S.modelos.map(tagModelo), ...S.plantoes.map(tagP)].filter(Boolean))].map(t => `<option value="${esc(t)}">`).join('')}</datalist></label>
     <label class="f"><span>Data</span><input class="in" type="date" name="data" value="${p.data}" required></label>
@@ -1099,7 +1120,8 @@ function formPlantao(id, preset = {}) {
   f.dividido.onchange = () => { if (f.dividido.checked && !num(f.parte.value)) { f.parte.value = v(Math.round(num(f.valor.value) * 50) / 100); parteAuto = true; } ui(); };
   b.querySelector('[data-metade]').onclick = () => { f.parte.value = v(Math.round(num(f.valor.value) * 50) / 100); parteAuto = true; ui(); };
   ui();
-  b.querySelectorAll('[data-grp]').forEach(x => x.onclick = () => { const id = x.dataset.grp, on = !x.classList.contains('on'); b.querySelectorAll('[data-grp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.toggle('hide', !on || y.dataset.mods !== id)); if (on) { f.localId.value = id; recalc(); ui(); } });
+  b.querySelectorAll('[data-grp]').forEach(x => x.onclick = () => { const id = x.dataset.grp, on = !x.classList.contains('on'); b.querySelectorAll('[data-grp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-esps]').forEach(y => y.classList.toggle('hide', !on || y.dataset.esps !== id)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.add('hide')); b.querySelectorAll('[data-esp]').forEach(y => y.classList.remove('on')); if (on) { f.localId.value = id; recalc(); ui(); const es = [...b.querySelectorAll('[data-esp]')].filter(y => y.dataset.esp.split('|')[0] === id); if (es.length === 1) es[0].click(); } });
+  b.querySelectorAll('[data-esp]').forEach(x => x.onclick = () => { const k = x.dataset.esp, on = !x.classList.contains('on'); b.querySelectorAll('[data-esp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.toggle('hide', !on || y.dataset.mods !== k)); if (on) f.tag.value = k.slice(k.indexOf('|') + 1); });
   b.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { const m = S.modelos.find(y => y.id === x.dataset.mod); f.localId.value = m.localId; f.inicio.value = m.inicio; f.fim.value = m.fim; f.valor.value = v(m.valor); f.tag.value = tagModelo(m); if (m.nota) f.nota.value = m.nota; p.modeloId = m.id; b.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); recalc(); ui(); });
   if (f.pago) f.pago.onchange = () => { b.querySelector('[data-pago-box]').classList.toggle('hide', !f.pago.checked); if (f.pago.checked && !num(f.valorPago.value)) f.valorPago.value = v(num(f.valor.value) + num(f.extra.value)); };
   // Repetição
@@ -1243,7 +1265,7 @@ function menuNovo() {
   const mods = sortBy(S.modelos, m => m.ordem ?? 0), d = S.sel || HOJE;
   const b = openSheet('Adicionar', `
     <div class="muted" style="margin-bottom:8px">Plantão em <b>${dataLonga(d)}</b> <button class="btn sm g" data-trocadata>trocar</button><input type="date" class="in hide" data-novadata value="${d}" style="margin-top:6px"></div>
-    ${mods.length ? `<div class="h" style="margin-top:6px">Com um toque</div><div class="card">${gruposMod().map((g, gi, arr) => `<button class="li grp" style="width:100%" data-mg="${g.l.id}"><span class="sq" style="--c:${g.l.cor}">${esc(sigla(g.l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(g.l.nome)}</b><span>${g.ms.length} modelo${g.ms.length === 1 ? '' : 's'}</span></div>${ic('dn')}</button><div class="subgrp ${arr.length > 1 ? 'hide' : ''}" data-mgb="${g.l.id}">${g.ms.map(m => `<button class="li" style="width:100%" data-addm="${m.id}"><span class="sq" style="--c:${g.l.cor}">${hh(dur(m))}</span><div class="g"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></div>${ic('plus')}</button>`).join('')}</div>`).join('')}</div>` : `<div class="dica">Crie modelos de plantão em Ajustes para adicionar com um toque.</div>`}
+    ${mods.length ? `<div class="h" style="margin-top:6px">Com um toque</div><div class="card">${gruposMod().map((g, gi, arr) => { const es = espDe(g.l.id); return `<button class="li grp" style="width:100%" data-mg="${g.l.id}"><span class="sq" style="--c:${g.l.cor}">${esc(sigla(g.l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(g.l.nome)}</b><span>${es.length} especialidade${es.length === 1 ? '' : 's'}</span></div>${ic('dn')}</button><div class="subgrp ${arr.length > 1 ? 'hide' : ''}" data-mgb="${g.l.id}">${es.map(e => `<button class="li grp" style="width:100%" data-mg="${esc(g.l.id + '|' + e.t)}"><span class="sq" style="--c:${e.t ? corTag(e.t) : g.l.cor};width:auto;min-width:30px;padding:0 6px">${esc(e.t || '—')}</span><div class="g"><b>${esc(e.t || 'Sem especialidade')}</b><span>${e.ms.length} modelo${e.ms.length === 1 ? '' : 's'}</span></div>${ic('dn')}</button><div class="subgrp ${es.length > 1 ? 'hide' : ''}" data-mgb="${esc(g.l.id + '|' + e.t)}">${e.ms.map(m => `<button class="li" style="width:100%" data-addm="${m.id}"><span class="sq" style="--c:${corModelo(m)}">${hh(dur(m))}</span><div class="g"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></div>${ic('plus')}</button>`).join('')}</div>`).join('')}</div>`; }).join('')}</div>` : `<div class="dica">Crie modelos de plantão em Ajustes para adicionar com um toque.</div>`}
     <div class="btns" style="margin-top:14px;flex-direction:column">
       <button class="btn w" data-o="p">${ic('ed')}Plantão personalizado</button>
       <button class="btn w" data-o="r">${ic('cal')}Montar o mês (repetir)</button>
@@ -1254,7 +1276,7 @@ function menuNovo() {
   b.querySelector('[data-trocadata]').onclick = () => b.querySelector('[data-novadata]').classList.toggle('hide');
   b.querySelector('[data-novadata]').onchange = e => { data = e.target.value || d; S.sel = data; b.querySelector('b').textContent = dataLonga(data); };
   b.addEventListener('click', e => {
-    const mg = e.target.closest('[data-mg]'); if (mg) { const bx = b.querySelector(`[data-mgb="${mg.dataset.mg}"]`); bx.classList.toggle('hide'); return; }
+    const mg = e.target.closest('[data-mg]'); if (mg) { const bx = [...b.querySelectorAll('[data-mgb]')].find(x => x.dataset.mgb === mg.dataset.mg); if (bx) bx.classList.toggle('hide'); return; }
     const am = e.target.closest('[data-addm]'); if (am) { closeSheet(); addModelo(am.dataset.addm, data); return; }
     const o = e.target.closest('[data-o]'); if (!o) return;
     closeSheet();
@@ -1465,13 +1487,16 @@ document.addEventListener('click', async e => {
     case 'novoModelo': return formModelo();
     case 'novoModeloLocal': return formModelo(null, id);
     case 'modGrp': S.modOpen = S.modOpen || {}; S.modOpen[id] = !S.modOpen[id]; return render();
-    case 'qLoc': S.qLoc = id || null; return render();
+    case 'qLoc': S.qLoc = id || null; S.qEsp = null; return render();
+    case 'qEsp': S.qEsp = id; return render();
+    case 'qEspVolta': S.qEsp = null; S.qEspSkip = true; return render();
     case 'editModelo': return formModelo(id);
     case 'novaFer': return formFerias();
     case 'editFer': return formFerias(id);
     case 'ordL': case 'ordM': {
       const col = act === 'ordL' ? 'locais' : 'modelos';
-      const lst = act === 'ordL' ? locaisOrd() : modsDe((S.modelos.find(m => m.id === id) || {}).localId);
+      const mm = S.modelos.find(m => m.id === id) || {};
+      const lst = act === 'ordL' ? locaisOrd() : modsDe(mm.localId).filter(m => tagModelo(m) === tagModelo(mm));
       const i = lst.findIndex(x => x.id === id), j = i + +a.dataset.d;
       if (j < 0 || j >= lst.length) return;
       [lst[i], lst[j]] = [lst[j], lst[i]];
