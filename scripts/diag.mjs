@@ -8,6 +8,13 @@ const users = await db.collection('users').get();
 out.perfis = await Promise.all(users.docs.map(async d => ({ uid: d.id.slice(0, 6), campos: Object.keys(d.data()), username: d.data().username, subcols: (await d.ref.listCollections()).map(c => c.id) })));
 const authUsers = (await admin.auth().listUsers(50)).users.map(u => ({ uid: u.uid.slice(0, 6), email: u.email, temPerfil: users.docs.some(d => d.id === u.uid), criado: u.metadata.creationTime }));
 out.contas = authUsers;
+const convAtual = (await db.collection('config').doc('app').get()).data().convite;
+for (const u of (await admin.auth().listUsers(50)).users) {
+  if (u.email === 'jaaacked@plantonista.app' && !users.docs.some(d => d.id === u.uid)) {
+    await db.collection('users').doc(u.uid).set({ username: 'jaaacked', convite: convAtual, criado: Date.now() });
+    out.perfilCriado = 'jaaacked';
+  }
+}
 try {
   const r = await (await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${K}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'diag-rules@plantonista.app', password: 'diag123456', returnSecureToken: true }) })).json();
   const conv = (await db.collection('config').doc('app').get()).data().convite;
@@ -19,5 +26,5 @@ try {
 } catch (e) { out.testeErro = e.message; }
 const rs = await admin.securityRules().getFirestoreRuleset();
 out.regrasTemGet = rs.source[0].content.includes("get('bloqueado'");
-await db.collection('public').doc('diag').set(JSON.parse(JSON.stringify(out)));
+await db.collection('public').doc('diag2').set(JSON.parse(JSON.stringify(out)));
 console.log(JSON.stringify(out, null, 1));

@@ -1440,9 +1440,28 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S.
 /* =========================================================
    INÍCIO
    ========================================================= */
-function entrar(u) {
+async function entrar(u) {
   S.uid = u.uid; S.user = (u.email || '').replace(DOMINIO, '');
+  let temPerfil = true;
+  try { const d = await FB.fs.getDoc(FB.fs.doc(FB.db, 'users', u.uid)); temPerfil = d.exists(); } catch (e) { temPerfil = !(e && e.code === 'permission-denied') ? true : false; }
+  if (!temPerfil) return concluirCadastro(u);
   listen(); render();
+}
+function concluirCadastro(u, erro = '') {
+  $('#nav').classList.add('hide');
+  $('#app').innerHTML = `<form class="login" id="fcad">
+    <div class="logo">Plantonista</div>
+    <div class="tag">Falta só confirmar o código de convite para liberar sua conta <b>${esc(S.user)}</b>.</div>
+    <label class="f"><span>Código de convite</span><input class="in" name="c" autocapitalize="none" autocorrect="off" required></label>
+    ${erro ? `<div class="err">${esc(erro)}</div>` : ''}
+    <button class="btn p w" type="submit">Concluir cadastro</button>
+    <button class="link" type="button" id="sairCad">Sair</button></form>`;
+  $('#sairCad').onclick = () => FB.au.signOut(FB.auth);
+  $('#fcad').onsubmit = async e => {
+    e.preventDefault();
+    try { await FB.fs.setDoc(FB.fs.doc(FB.db, 'users', u.uid), { username:S.user, convite:e.target.c.value.trim(), criado:Date.now() }); listen(); render(); }
+    catch (err) { concluirCadastro(u, err.code === 'permission-denied' ? 'Código de convite inválido. Confira letras maiúsculas e minúsculas.' : 'Não foi possível concluir (' + (err.code || err.message) + ').'); }
+  };
 }
 (async function iniciar() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
