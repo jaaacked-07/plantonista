@@ -56,7 +56,7 @@ webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
 try {
   const cRef = db.collection('config').doc('app'), c = await cRef.get(), d = c.exists ? c.data() : null;
   if (d && typeof d.convite === 'string' && d.convite !== d.convite.trim()) await cRef.set({ ...d, convite: d.convite.trim() });
-  await db.collection('public').doc('diag').delete().catch(() => {});
+  for (const x of ['diag', 'diag2']) await db.collection('public').doc(x).delete().catch(() => {});
 } catch (e) { console.log('Convite:', e.message); }
 
 async function processUser(U) {
