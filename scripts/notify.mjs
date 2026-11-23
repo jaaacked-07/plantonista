@@ -33,7 +33,7 @@ const money = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', curren
 const plural = (n, a, b) => n === 1 ? a : b;
 const dur = p => { if (!p.inicio || !p.fim) return 0; let d = toMin(p.fim) - toMin(p.inicio); if (d <= 0) d += 1440; return d; };
 const hh = m => { const h = Math.floor(m / 60), r = m % 60; return r ? `${h}h${String(r).padStart(2, '0')}` : `${h}h`; };
-const total = p => (+p.valor || 0) + (+p.extra || 0);
+const total = p => (p.dividido ? (+p.parte || 0) : (+p.valor || 0)) + (+p.extra || 0);
 const label = a => a >= 60 ? (a % 60 ? `${Math.floor(a / 60)}h${a % 60}` : `${a / 60}h`) : `${a} min`;
 
 const now = nowSP();

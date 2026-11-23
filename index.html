@@ -140,6 +140,16 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .pc-n{font-size:13px;color:var(--cinza);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pc-r{padding:10px 4px 10px 0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}
 .pc-r .val{font-size:14px;font-weight:600}
+.tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
+.pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
+.pc-ed svg{width:17px;height:17px}
+.li.grp{width:100%;text-align:left}
+.subgrp{padding-left:14px;border-left:2px solid var(--linha2);margin:2px 0 6px 14px}
+.dia{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.dia .bar[data-drag]{cursor:grab}
+.dia .bar.arrastando{opacity:.3}
+.dia.alvo{background:var(--roxo-cl);box-shadow:inset 0 0 0 2px var(--roxo)}
+.bar.ghost{position:fixed;z-index:80;pointer-events:none;background:var(--c);color:#fff;font:600 11px/22px Inter,sans-serif;padding:0 8px;border-radius:3px;box-shadow:0 8px 20px rgba(23,20,31,.3);white-space:nowrap;font-style:normal}
 .pc-pay{width:48px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-pay.on{color:var(--verde);background:var(--verde-cl)}
 .st{font-family:var(--cond);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:1px 7px;border-radius:2px;white-space:nowrap}
@@ -323,7 +333,8 @@ const tm = s => { if (!s) return 0; const [h,m] = s.split(':').map(Number); retu
 const dur = p => { if (!p.inicio || !p.fim) return 0; let d = tm(p.fim) - tm(p.inicio); if (d <= 0) d += 1440; return d; };
 const cruza = p => p.inicio && p.fim && tm(p.fim) <= tm(p.inicio) && tm(p.fim) > 0;
 const hh = m => { m = Math.round(m); const h = Math.floor(m/60), r = m%60; return r ? `${h}h${p2(r)}` : `${h}h`; };
-const total = p => (+p.valor||0) + (+p.extra||0);
+const total = p => (p.dividido ? (+p.parte||0) : (+p.valor||0)) + (+p.extra||0);
+const desconto = p => p.dividido ? Math.max(0, (+p.valor||0) - (+p.parte||0)) : 0;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const sortBy = (arr, f) => arr.slice().sort((a,b) => { const x = f(a), y = f(b); return x < y ? -1 : x > y ? 1 : 0; });
 const LS = k => 'plantonista:' + k;
@@ -403,6 +414,15 @@ const loc = id => S.locais.find(l => l.id === id) || { id, nome:'Local removido'
 const locaisAtivos = () => sortBy(S.locais.filter(l => !l.arquivado), l => l.ordem ?? 0);
 const locaisOrd = () => sortBy(S.locais, l => (l.arquivado ? 1e6 : 0) + (l.ordem ?? 0));
 const sigla = l => (l.sigla && l.sigla.trim()) || (l.nome || '').split(/\s+/)[0].slice(0, 7);
+// Especialidade / nome curto do plantão (ex.: CM, PED). Detecta sozinho a partir do nome do modelo.
+function tagAuto(nome, l) {
+  const sg = l ? sigla(l).toUpperCase() : '';
+  return (nome || '').split(/[\s·\-\/()]+/).find(x => /^[A-ZÀ-Ú]{2,6}$/.test(x) && x !== sg && x !== 'UPA') || '';
+}
+const tagModelo = m => m.tag != null ? m.tag : tagAuto(m.nome, loc(m.localId));
+const tagP = p => { if (p.tag != null) return p.tag; const m = S.modelos.find(x => x.id === p.modeloId); return m ? tagModelo(m) : ''; };
+const modsDe = lid => sortBy(S.modelos.filter(m => m.localId === lid), m => m.ordem ?? 0);
+const gruposMod = () => { const ids = [...new Set(sortBy(S.modelos, m => m.ordem ?? 0).map(m => m.localId))]; return sortBy(ids.map(id => ({ l: loc(id), ms: modsDe(id) })), g => (g.l.arquivado ? 1e6 : 0) + (g.l.ordem ?? 999)); };
 function nextDay(ds, day) {
   const [y,m,d] = ds.split('-').map(Number);
   let last = new Date(y, m, 0).getDate(), c = Math.min(day, last);
@@ -437,17 +457,22 @@ function salarios() {
 }
 const recebiveis = () => [...S.plantoes, ...salarios()];
 const rotulo = r => r.sal ? `Salário de ${mesCurto(r.ref)}` : `${ddmm(r.data)}/${r.data.slice(2,4)} ${SEMC[dow(r.data)]} · ${hh(dur(r))}`;
-const visivel = p => !(S.cfg.filtro || []).length || S.cfg.filtro.includes(p.localId);
+const visivel = p => (!(S.cfg.filtro || []).length || S.cfg.filtro.includes(p.localId)) && (!(S.cfg.filtroTag || []).length || S.cfg.filtroTag.includes(tagP(p)));
+const hashN = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const corTag = t => ((S.cfg.tagCores || {})[t]) || CORES[(hashN(t) + 3) % CORES.length][0];
+const corP = p => { const t = tagP(p); return t ? corTag(t) : loc(p.localId).cor; };
+const tagsUsadas = () => [...new Set([...S.modelos.map(tagModelo), ...S.plantoes.map(tagP)].filter(Boolean))].sort();
 const priv = () => !!S.cfg.privacidade;
 const mv = v => priv() ? 'R$ •••' : money(v);
 
 /* ---------- Toast / folha ---------- */
 let toastT;
-function toast(msg, acao, fn) {
+function toast(msg, acao, fn, acao2, fn2) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast';
-  t.innerHTML = `<span>${esc(msg)}</span>${acao ? `<button>${esc(acao)}</button>` : ''}`;
-  if (acao) t.querySelector('button').onclick = () => { fn(); t.remove(); };
+  t.innerHTML = `<span>${esc(msg)}</span>${acao2 ? `<button data-t2>${esc(acao2)}</button>` : ''}${acao ? `<button data-t1>${esc(acao)}</button>` : ''}`;
+  if (acao) t.querySelector('[data-t1]').onclick = () => { fn(); t.remove(); };
+  if (acao2) t.querySelector('[data-t2]').onclick = () => { fn2(); t.remove(); };
   document.body.appendChild(t);
   clearTimeout(toastT); toastT = setTimeout(() => t.remove(), acao ? 5000 : 2600);
 }
@@ -551,15 +576,17 @@ function go(view) { S.view = view; location.hash = view; window.scrollTo(0, 0); 
 /* ---------- Cartão de plantão ---------- */
 function cardP(p, o = {}) {
   const l = loc(p.localId), st = status(p), esconde = o.home && priv();
-  return `<div class="pc" style="--c:${l.cor}">
+  return `<div class="pc" style="--c:${corP(p)}">
     <div class="pc-b"></div>
     <button class="pc-m" data-act="editP" data-id="${p.id}">
-      <div class="pc-t">${p.importante ? '<span class="star">★</span>' : ''}${esc(l.nome)}</div>
+      <div class="pc-t">${p.importante ? '<span class="star">★</span>' : ''}${esc(l.nome)}${tagP(p) ? ` <span class="tagp">${esc(tagP(p))}</span>` : ''}</div>
       <div class="pc-s mono">${o.data ? ddmm(p.data) + ' ' + SEMC[dow(p.data)] + ' · ' : ''}${p.inicio}–${p.fim} · ${hh(dur(p))}</div>
       ${p.extra ? `<div class="pc-n">+ ${esconde ? 'adicional' : money(p.extra)}${p.extraDesc ? ' · ' + esc(p.extraDesc) : ''}</div>` : ''}
+      ${p.dividido ? `<div class="pc-n" style="font-style:normal">÷ Dividido com ${esc(p.colega || 'colega')}${esconde ? '' : ` · −${money(desconto(p))} (cheio ${money(p.valor)})`}</div>` : ''}
       ${p.nota ? `<div class="pc-n">${esc(p.nota)}</div>` : ''}
     </button>
     <div class="pc-r">${esconde ? '' : `<div class="mono val">${money(p.pago ? p.valorPago : total(p))}</div>${chipSt(st)}`}${!p.pago && p.prev && !esconde ? `<span class="muted mono" style="font-size:11.5px">pgto ${ddmm(p.prev)}</span>` : ''}</div>
+    <button class="pc-ed" data-act="editP" data-id="${p.id}" aria-label="Editar plantão">${ic('ed')}</button>
     ${esconde ? '' : `<button class="pc-pay ${p.pago ? 'on' : ''}" data-act="${p.pago ? 'despagar' : 'pagar'}" data-id="${p.id}" aria-label="${p.pago ? 'Desfazer pagamento' : 'Marcar como pago'}">${ic('ok')}</button>`}
   </div>`;
 }
@@ -575,7 +602,7 @@ function vAgenda() {
       <button class="ib" data-act="modo" aria-label="Alternar visão">${ic(S.modo === 'mes' ? 'list' : 'cal')}</button>
     </div></div>`;
   const locs = locaisAtivos();
-  const filtros = locs.length > 1 ? `<div class="filtros">${locs.map(l => `<button class="chip ${(S.cfg.filtro||[]).includes(l.id) ? 'on' : ''}" style="--c:${l.cor}" data-act="filtro" data-id="${l.id}"><span class="dot"></span>${esc(l.nome)}</button>`).join('')}${(S.cfg.filtro||[]).length ? `<button class="chip" data-act="filtroLimpa">Todos</button>` : ''}</div>` : '';
+  const filtros = locs.length > 1 || tagsUsadas().length > 1 ? `<div class="filtros">${locs.map(l => `<button class="chip ${(S.cfg.filtro||[]).includes(l.id) ? 'on' : ''}" style="--c:${l.cor}" data-act="filtro" data-id="${l.id}"><span class="dot"></span>${esc(l.nome)}</button>`).join('')}${tagsUsadas().length > 1 ? tagsUsadas().map(t => `<button class="chip ${(S.cfg.filtroTag||[]).includes(t) ? 'on' : ''}" style="--c:${corTag(t)}" data-act="filtroTag" data-id="${esc(t)}"><span class="dot"></span>${esc(t)}</button>`).join('') : ''}${(S.cfg.filtro||[]).length || (S.cfg.filtroTag||[]).length ? `<button class="chip" data-act="filtroLimpa">Todos</button>` : ''}</div>` : '';
   const intro = !S.locais.length ? `<div class="dica" style="margin-bottom:14px"><b>Comece por aqui:</b> cadastre seus locais de trabalho e seus modelos de plantão em <b>Ajustes</b>. Depois é só tocar no <b>+</b>.<div style="margin-top:8px"><button class="btn sm p" data-act="novoLocal">Cadastrar primeiro local</button></div></div>` : '';
   const instala = isIOS && !isStandalone && !localStorage.getItem(LS('dicaInstala')) ? `<div class="dica" style="margin-bottom:14px">Para usar como app e receber lembretes: no Safari, toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. <button class="btn sm g" data-act="okInstala">Entendi</button></div>` : '';
   if (S.modo === 'lista') return top + instala + intro + filtros + vLista();
@@ -594,7 +621,7 @@ function vAgenda() {
   let cells = '';
   for (let i = 0; i < rows*7; i++) {
     const d = addD(start, i), lst = sortBy(map[d] || [], x => (x.cont ? '0' : '1') + x.p.inicio);
-    const bars = lst.slice(0, 3).map(({p, cont}) => { const l = loc(p.localId); return `<i class="bar ${cont ? 'cont' : ''} ${!cont && status(p) === 'atrasado' && !priv() ? 'atr' : ''}" style="--c:${l.cor}">${p.importante && !cont ? '★' : ''}${esc(sigla(l))}</i>`; }).join('');
+    const bars = lst.slice(0, 3).map(({p, cont}) => { const l = loc(p.localId); const tg = tagP(p); return `<i class="bar ${cont ? 'cont' : ''} ${!cont && status(p) === 'atrasado' && !priv() ? 'atr' : ''}" style="--c:${corP(p)}" data-act="editP" data-id="${p.id}" ${cont ? '' : 'data-drag="1"'}>${p.importante && !cont ? '★' : ''}${esc(sigla(l))}${tg ? ' ' + esc(tg) : ''}</i>`; }).join('');
     cells += `<button class="dia ${d.slice(0,7) !== ym ? 'fora' : ''} ${d === HOJE ? 'hoje' : ''} ${d === S.sel ? 'sel' : ''} ${emFerias(d) ? 'ferias' : ''}" data-act="dia" data-d="${d}"><span class="n">${+d.slice(8)}</span>${bars}${lst.length > 3 ? `<i class="mais">+${lst.length - 3}</i>` : ''}</button>`;
   }
   const hdr = Array.from({length:7}, (_, i) => `<div>${SEMC[(i + ws) % 7]}</div>`).join('');
@@ -604,18 +631,22 @@ function vAgenda() {
   const nav = `<div class="mesnav" style="margin:-6px 0 12px"><button class="ib" data-act="mesAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="mesProx" aria-label="Próximo mês">${ic('r')}</button>${ym !== HOJE.slice(0,7) || S.sel !== HOJE ? `<button class="btn sm g" data-act="hoje">Hoje</button>` : ''}</div>`;
   return top + instala + intro + nav + filtros + `<div class="cal"><div class="cal-h">${hdr}</div><div class="cal-g">${cells}</div></div>
     <div class="stats"><div><b>${doMes.length}</b><span>Plantões</span></div><div><b>${hh(horas)}</b><span>Horas</span></div><div><b>${dias}</b><span>Dias</span></div><div><b style="font-size:${priv() ? 15 : valor >= 10000 ? 13.5 : 15}px">${mv(valor)}</b><span>No mês</span></div></div>
+    <div class="muted" style="font-size:12px;text-align:center;margin-top:6px">Toque num plantão para editar · segure e arraste para mudar o dia</div>
     ${vDia(S.sel)}`;
 }
 function vDia(d) {
   const lst = sortBy(S.plantoes.filter(p => p.data === d && visivel(p)), p => p.inicio);
   const ont = S.cfg.noturnoDoisDias ? S.plantoes.filter(p => p.data === addD(d, -1) && cruza(p) && visivel(p)) : [];
   const fer = S.ferias.filter(f => d >= f.inicio && d <= f.fim);
-  const mods = sortBy(S.modelos, m => m.ordem ?? 0);
+  const gs = gruposMod(), g1 = gs.length === 1 ? gs[0].l.id : null, aberto = S.qLoc && gs.some(g => g.l.id === S.qLoc) ? S.qLoc : g1;
+  const qadd = aberto
+    ? `${!g1 ? `<button class="chip" data-act="qLoc" data-id="">${ic('l')}</button>` : ''}${modsDe(aberto).map(m => `<button class="chip" style="--c:${loc(m.localId).cor}" data-act="addMod" data-id="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`).join('')}`
+    : gs.map(g => `<button class="chip" style="--c:${g.l.cor}" data-act="qLoc" data-id="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)} <span class="muted">${g.ms.length}</span></button>`).join('');
   return `<div class="diatit">${dataLonga(d)}${d === HOJE ? '<small>hoje</small>' : ''}</div>
     ${fer.map(f => `<div class="fer"><span><b>${esc(f.desc || 'Férias')}</b> · ${ddmm(f.inicio)} a ${ddmm(f.fim)}</span><button class="btn sm g" data-act="editFer" data-id="${f.id}">Editar</button></div>`).join('')}
     ${ont.map(p => `<div class="muted" style="margin-bottom:6px">Continuação: ${esc(loc(p.localId).nome)} até ${p.fim}</div>`).join('')}
     ${lst.length ? lst.map(p => cardP(p, {home:true})).join('') : `<div class="vazio">Nenhum plantão neste dia.</div>`}
-    <div class="qadd">${mods.map(m => { const l = loc(m.localId); return `<button class="chip" style="--c:${l.cor}" data-act="addMod" data-id="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`; }).join('')}<button class="chip" data-act="novoP">${ic('plus')}Personalizado</button></div>`;
+    <div class="qadd">${qadd}<button class="chip" data-act="novoP">${ic('plus')}Personalizado</button></div>`;
 }
 function vLista() {
   const lim = addD(HOJE, 120);
@@ -667,6 +698,8 @@ function vFin() {
   const prevNaoAtr = sortBy(prevMes.filter(r => !(r.prev < HOJE)), r => r.prev);
   html += `<div class="h">Previstos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(prevNaoAtr))}</span></div>` + (prevNaoAtr.length ? `<div class="card">${prevNaoAtr.map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento previsto para este mês.</div>`);
   html += `<div class="h">Recebidos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(recMes, r => +r.valorPago || 0))}</span></div>` + (recMes.length ? `<div class="card">${sortBy(recMes, r => r.dataPago).map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento recebido neste mês.</div>`);
+  const divs = sortBy(S.plantoes.filter(p => p.dividido && p.data.slice(0,7) === ym), p => p.data);
+  if (divs.length) html += `<div class="h">Plantões divididos<span class="sub">−${money(divs.reduce((s, p) => s + desconto(p), 0))}</span></div><div class="card">${divs.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${corP(p)}"><span class="dot"></span><button class="g" style="text-align:left" data-act="editP" data-id="${p.id}"><b>${esc(p.colega || 'Colega')}</b><span class="mono">${esc(l.nome)}${tagP(p) ? ' ' + esc(tagP(p)) : ''} · ${rotulo(p)}</span><span> · cheio ${money(p.valor)}</span></button><div class="v" style="color:var(--ambar)">−${money(desconto(p))}<small>você: ${money(total(p))}</small></div></div>`; }).join('')}</div>`;
   const semPrev = S.plantoes.filter(p => !p.pago && !p.prev && total(p) > 0);
   if (semPrev.length) html += `<div class="h">Sem data de pagamento<span class="sub">${money(sm(semPrev))}</span></div><div class="card">${sortBy(semPrev, p => p.data).map(linha).join('')}</div>`;
   return html;
@@ -784,7 +817,7 @@ function vRel() {
     const meses = [...new Set([...ps.map(p => p.data.slice(0,7)), ...sals.map(s => s.ref)])].sort().reverse();
     if (meses.length) html += `<div class="h">Histórico por mês</div><div class="card tbw"><table class="tb"><thead><tr><th>Mês</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Recebido</th><th class="r">Aberto</th></tr></thead><tbody>${meses.map(m => { const a = ps.filter(p => p.data.slice(0,7) === m), b = sals.filter(s => s.ref === m), q = resumo(a, b); return `<tr><td>${cap(mesCurto(m))}</td><td class="r">${q.n}</td><td class="r">${hh(q.min)}</td><td class="r">${money(q.trab)}</td><td class="r">${money(q.rec)}</td><td class="r">${money(q.aReceber)}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
-  if (ps.length) html += `<div class="h">Plantões<span class="sub">${ps.length}</span></div><div class="card tbw"><table class="tb"><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Valor</th><th>Status</th></tr></thead><tbody>${ps.map(p => `<tr><td class="mono">${ddmm(p.data)}</td><td class="wrap">${esc(loc(p.localId).nome)}${p.importante ? ' ★' : ''}</td><td class="mono">${p.inicio}–${p.fim}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${chipSt(status(p))}</td></tr>`).join('')}</tbody></table></div>`;
+  if (ps.length) html += `<div class="h">Plantões<span class="sub">${ps.length}</span></div><div class="card tbw"><table class="tb"><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Valor</th><th>Status</th></tr></thead><tbody>${ps.map(p => `<tr><td class="mono">${ddmm(p.data)}</td><td class="wrap">${esc(loc(p.localId).nome)}${tagP(p) ? ' ' + esc(tagP(p)) : ''}${p.importante ? ' ★' : ''}${p.dividido ? `<br><span class="muted">÷ ${esc(p.colega || 'colega')} −${money(desconto(p))}</span>` : ''}</td><td class="mono">${p.inicio}–${p.fim}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${chipSt(status(p))}</td></tr>`).join('')}</tbody></table></div>`;
   else html += `<div class="vazio" style="margin-top:16px">Nenhum plantão neste período.</div>`;
   return html;
 }
@@ -802,7 +835,7 @@ function gerarPDF() {
     ${linhas.length ? `<h2>Por local</h2><table><thead><tr><th>Local</th><th class="r">Plantões</th><th class="r">Horas</th><th class="r">Total</th><th class="r">R$/h</th><th class="r">Em aberto</th></tr></thead><tbody>${linhas.map(x => `<tr><td>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r">${money(x.aberto)}</td></tr>`).join('')}</tbody></table>` : ''}
     ${sals.length ? `<h2>Salários</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th>Status</th><th class="r">Valor</th></tr></thead><tbody>${sals.map(s => `<tr><td>${esc(loc(s.localId).nome)}</td><td>${mesCurto(s.ref)}</td><td>${ddmmaa(s.prev)}</td><td>${ST_TXT[status(s)]}${s.pago ? ' em ' + ddmmaa(s.dataPago) : ''}</td><td class="r">${money(s.pago ? s.valorPago : s.valor)}</td></tr>`).join('')}</tbody></table>` : ''}
     ${atr.length ? `<h2>Pagamentos atrasados</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td>${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data)}</td><td>${ddmmaa(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)} dias</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table>` : ''}
-    <h2>Plantões (${ps.length})</h2><table><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Horas</th><th class="r">Valor</th><th>Pagamento</th><th>Obs.</th></tr></thead><tbody>${ps.map(p => `<tr><td>${ddmmaa(p.data)} ${SEMC[dow(p.data)]}</td><td>${esc(loc(p.localId).nome)}</td><td>${p.inicio}–${p.fim}</td><td class="r">${hh(dur(p))}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—')}</td><td>${esc([p.extraDesc, p.nota].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
+    <h2>Plantões (${ps.length})</h2><table><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Horas</th><th class="r">Valor</th><th>Pagamento</th><th>Obs.</th></tr></thead><tbody>${ps.map(p => `<tr><td>${ddmmaa(p.data)} ${SEMC[dow(p.data)]}</td><td>${esc(loc(p.localId).nome)}</td><td>${p.inicio}–${p.fim}</td><td class="r">${hh(dur(p))}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—')}</td><td>${esc([tagP(p), p.dividido ? `Dividido com ${p.colega || 'colega'} (−${money(desconto(p))}, cheio ${money(p.valor)})` : '', p.extraDesc, p.nota].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
   setTimeout(() => window.print(), 250);
 }
 
@@ -818,7 +851,7 @@ function vAjustes() {
   <div class="card">${locs.length ? locs.map((l, i) => `<div class="li"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><button class="g" data-act="editLocal" data-id="${l.id}"><b>${esc(l.nome)}${l.arquivado ? ' <span class="st nota">Arquivado</span>' : ''}</b><span>${descLocal(l)}</span></button><div class="ord"><button data-act="ordL" data-id="${l.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordL" data-id="${l.id}" data-d="1" ${i === locs.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('') : `<div class="muted">Nenhum local ainda.</div>`}</div>
 
   <div class="h">Modelos de plantão<button class="btn sm p" data-act="novoModelo">${ic('plus')}Modelo</button></div>
-  <div class="card">${mods.length ? mods.map((m, i) => { const l = loc(m.localId); return `<div class="li"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><button class="g" data-act="editModelo" data-id="${m.id}"><b>${esc(m.nome)}</b><span class="mono">${esc(l.nome)} · ${m.inicio}–${m.fim} · ${money(m.valor)}</span></button><div class="ord"><button data-act="ordM" data-id="${m.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordM" data-id="${m.id}" data-d="1" ${i === mods.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`; }).join('') : `<div class="muted">Crie modelos (ex.: "UPA 12h diurno") para cadastrar plantões com um toque.</div>`}</div>
+  <div class="card">${mods.length ? gruposMod().map(({l, ms}) => { const ab = (S.modOpen || {})[l.id]; return `<button class="li grp" data-act="modGrp" data-id="${l.id}"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(l.nome)}</b><span>${ms.length} modelo${ms.length === 1 ? '' : 's'}</span></div>${ic(ab ? 'up' : 'dn')}</button>${ab ? `<div class="subgrp">${ms.map((m, i) => `<div class="li"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><button class="g" data-act="editModelo" data-id="${m.id}"><b>${esc(m.nome)}${tagModelo(m) ? ` <span class="tagp">${esc(tagModelo(m))}</span>` : ''}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></button><div class="ord"><button data-act="ordM" data-id="${m.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordM" data-id="${m.id}" data-d="1" ${i === ms.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('')}<button class="btn sm g" data-act="novoModeloLocal" data-id="${l.id}">${ic('plus')}Modelo em ${esc(l.nome)}</button></div>` : ''}`; }).join('') : `<div class="muted">Crie modelos (ex.: "UPA 12h CM") para cadastrar plantões com um toque.</div>`}</div>
 
   <div class="h">Lembretes</div>
   <div class="card">
@@ -838,6 +871,8 @@ function vAjustes() {
     <div class="sw"><div class="t">Noturno em dois dias<span class="muted">Mostra o plantão que vira a noite também no dia seguinte.</span></div>${tg('noturno', S.cfg.noturnoDoisDias)}</div>
     <div class="sw"><div class="t">Privacidade na agenda<span class="muted">Esconde valores e status de pagamento na tela inicial.</span></div>${tg('privacidade', S.cfg.privacidade)}</div>
   </div>
+
+  ${tagsUsadas().length ? `<div class="h">Especialidades<span class="sub">cor na agenda</span></div><div class="card">${tagsUsadas().map(t => `<div class="li" style="flex-wrap:wrap"><span class="sq" style="--c:${corTag(t)};width:auto;padding:0 8px">${esc(t)}</span><div class="cores" style="flex:1;gap:6px">${CORES.map(([c, n]) => `<button class="cor ${c === corTag(t) ? 'on' : ''}" style="--c:${c};width:26px;height:26px" data-act="tagCor" data-t="${esc(t)}" data-v="${c}" aria-label="${n}"></button>`).join('')}<label class="cor custom" style="width:26px;height:26px"><input type="color" value="${corTag(t)}" data-tagcustom="${esc(t)}"></label></div></div>`).join('')}</div>` : ''}
 
   <div class="h">Férias e folgas<button class="btn sm p" data-act="novaFer">${ic('plus')}Período</button></div>
   <div class="card">${S.ferias.length ? sortBy(S.ferias, f => f.inicio).reverse().map(f => `<div class="li"><div class="g"><b>${esc(f.desc || 'Férias')}</b><span class="mono">${ddmmaa(f.inicio)} a ${ddmmaa(f.fim)}</span></div><button class="ib" data-act="editFer" data-id="${f.id}" aria-label="Editar">${ic('ed')}</button></div>`).join('') : `<div class="muted">Marque férias, folgas ou congressos para vê-los no calendário.</div>`}</div>
@@ -948,7 +983,8 @@ function formModelo(id, localPre) {
   const novo = !id;
   const b = openSheet(novo ? 'Novo modelo' : 'Editar modelo', `<form id="fm">
     <label class="f"><span>Local</span><select class="in" name="localId">${locaisAtivos().map(l => `<option value="${l.id}" ${l.id === m.localId ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>
-    <label class="f"><span>Nome do modelo</span><input class="in" name="nome" value="${esc(m.nome)}" placeholder="UPA 12h diurno"></label>
+    <label class="f"><span>Nome do modelo</span><input class="in" name="nome" value="${esc(m.nome)}" placeholder="UPA 12h CM"></label>
+    <label class="f"><span>Especialidade (aparece na agenda)</span><input class="in" name="tag" value="${esc(id ? tagModelo(m) : '')}" placeholder="CM, PED… (detecta pelo nome)" autocapitalize="characters"></label>
     <div class="row"><label class="f"><span>Início</span><input class="in" type="time" name="inicio" value="${m.inicio}" required></label><label class="f"><span>Fim</span><input class="in" type="time" name="fim" value="${m.fim}" required></label></div>
     <div class="muted" data-dur style="margin:-4px 0 12px"></div>
     <label class="f"><span>Valor</span><input class="in mono" name="valor" inputmode="decimal" value="${m.valor ? String(m.valor).replace('.', ',') : ''}" placeholder="0,00"></label>
@@ -966,6 +1002,7 @@ function formModelo(id, localPre) {
     const l = loc(f.localId.value);
     const o = { ...m, localId: f.localId.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), nota: f.nota.value.trim() };
     o.nome = f.nome.value.trim() || `${sigla(l)} ${hh(dur(o))} ${tm(o.inicio) >= 18*60 || tm(o.inicio) < 5*60 ? 'noturno' : 'diurno'}`;
+    o.tag = f.tag.value.trim() || tagAuto(o.nome, l);
     closeSheet(); await put('modelos', o); toast(novo ? 'Modelo criado' : 'Modelo salvo');
   };
 }
@@ -991,7 +1028,7 @@ function gerarDatas(base, rep) {
 }
 function novoDeModelo(m, data) {
   const l = loc(m.localId);
-  return { id: uid(), localId: m.localId, data, inicio: m.inicio, fim: m.fim, valor: +m.valor || 0, extra: 0, extraDesc:'', nota: m.nota || '', importante:false, semLembrete:false, pago:false, valorPago:0, dataPago:'', prev: prevPag(l, data), notaSolicitada:'', modeloId: m.id };
+  return { id: uid(), localId: m.localId, data, inicio: m.inicio, fim: m.fim, valor: +m.valor || 0, extra: 0, extraDesc:'', nota: m.nota || '', importante:false, semLembrete:false, pago:false, valorPago:0, dataPago:'', prev: prevPag(l, data), notaSolicitada:'', modeloId: m.id, tag: tagModelo(m) };
 }
 function formPlantao(id, preset = {}) {
   if (!S.locais.length) { toast('Cadastre um local primeiro'); return formLocal(); }
@@ -1004,12 +1041,21 @@ function formPlantao(id, preset = {}) {
   const listaLocais = sortBy(S.locais.filter(l => !l.arquivado || l.id === p.localId), l => l.ordem ?? 0);
   const v = x => x ? String(x).replace('.', ',') : '';
   const b = openSheet(novo ? 'Novo plantão' : 'Editar plantão', `<form id="fp">
-    ${novo && mods.length ? `<div class="chips" style="margin-bottom:14px">${mods.map(m => `<button type="button" class="chip" style="--c:${loc(m.localId).cor}" data-mod="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`).join('')}</div>` : ''}
+    ${novo && mods.length ? `<label class="f" style="margin-bottom:6px"><span>Usar um modelo</span></label><div class="chips" data-grps style="margin-bottom:8px">${gruposMod().map(g => `<button type="button" class="chip" style="--c:${g.l.cor}" data-grp="${g.l.id}"><span class="dot"></span>${esc(g.l.nome)}</button>`).join('')}</div>${gruposMod().map(g => `<div class="chips hide" data-mods="${g.l.id}" style="margin-bottom:14px">${g.ms.map(m => `<button type="button" class="chip" style="--c:${g.l.cor}" data-mod="${m.id}">${esc(m.nome)}</button>`).join('')}</div>`).join('')}` : ''}
     <label class="f"><span>Local</span><select class="in" name="localId">${listaLocais.map(l => `<option value="${l.id}" ${l.id === p.localId ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>
+    <label class="f"><span>Especialidade / nome do plantão</span><input class="in" name="tag" value="${esc(tagP(p))}" placeholder="CM, PED…" list="tags-p" autocapitalize="characters"><datalist id="tags-p">${[...new Set([...S.modelos.map(tagModelo), ...S.plantoes.map(tagP)].filter(Boolean))].map(t => `<option value="${esc(t)}">`).join('')}</datalist></label>
     <label class="f"><span>Data</span><input class="in" type="date" name="data" value="${p.data}" required></label>
     <div class="row"><label class="f"><span>Início</span><input class="in" type="time" name="inicio" value="${p.inicio}" required></label><label class="f"><span>Fim</span><input class="in" type="time" name="fim" value="${p.fim}" required></label></div>
     <div class="muted" data-dur style="margin:-4px 0 12px"></div>
     <div class="row"><label class="f"><span>Valor</span><input class="in mono" name="valor" inputmode="decimal" value="${v(p.valor)}" placeholder="0,00"></label><label class="f"><span>Adicional</span><input class="in mono" name="extra" inputmode="decimal" value="${v(p.extra)}" placeholder="0,00"></label></div>
+    <div class="card" style="padding:4px 14px;margin-bottom:12px">
+      <div class="sw"><div class="t">Plantão dividido<span class="muted">Divide com um colega e você recebe só a sua parte.</span></div>${tg('dividido', p.dividido)}</div>
+      <div data-div-box class="${p.dividido ? '' : 'hide'}" style="padding-bottom:10px">
+        <label class="f"><span>Nome do colega</span><input class="in" name="colega" value="${esc(p.colega || '')}" list="colegas"><datalist id="colegas">${[...new Set(S.plantoes.map(x => x.colega).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
+        <div class="row"><label class="f" style="margin:0"><span>Sua parte</span><input class="in mono" name="parte" inputmode="decimal" value="${v(p.dividido ? p.parte : '')}"></label><div style="display:flex;align-items:flex-end"><button type="button" class="btn sm w" data-metade>Metade</button></div></div>
+        <div class="muted" data-div-txt style="margin-top:8px"></div>
+      </div>
+    </div>
     <label class="f" data-extra-desc><span>Descrição do adicional</span><input class="in" name="extraDesc" value="${esc(p.extraDesc || '')}" placeholder="Hora extra, produtividade…"></label>
     <div class="row"><label class="f"><span>Pagamento previsto</span><input class="in" type="date" name="prev" value="${p.prev || ''}"></label>
     <label class="f" data-nota-sol><span>Pagamento solicitado</span><input class="in" type="date" name="notaSolicitada" value="${p.notaSolicitada || ''}"></label></div>
@@ -1038,13 +1084,23 @@ function formPlantao(id, preset = {}) {
     const l = loc(f.localId.value);
     b.querySelector('[data-nota-sol]').classList.toggle('hide', !l.precisaNota);
     b.querySelector('[data-extra-desc]').classList.toggle('hide', !num(f.extra.value));
+    const dv = f.dividido.checked; b.querySelector('[data-div-box]').classList.toggle('hide', !dv);
+    const des = Math.max(0, num(f.valor.value) - num(f.parte.value));
+    b.querySelector('[data-div-txt]').textContent = dv ? `Desconto de ${money(des)} para ${f.colega.value.trim() || 'o colega'} · você recebe ${money(num(f.parte.value) + num(f.extra.value))}` : '';
   };
   const recalc = () => { if (!prevManual) f.prev.value = prevPag(loc(f.localId.value), f.data.value); };
   f.localId.onchange = () => { recalc(); ui(); };
   f.data.onchange = () => { recalc(); if (f.rep && f.rep.value === 'datas') datas = [f.data.value]; renderMini(); repTxt(); };
   f.prev.oninput = () => { prevManual = true; };
-  f.inicio.oninput = f.fim.oninput = f.extra.oninput = ui; ui();
-  b.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { const m = S.modelos.find(y => y.id === x.dataset.mod); f.localId.value = m.localId; f.inicio.value = m.inicio; f.fim.value = m.fim; f.valor.value = v(m.valor); if (m.nota) f.nota.value = m.nota; b.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); recalc(); ui(); });
+  f.inicio.oninput = f.fim.oninput = f.extra.oninput = f.parte.oninput = f.colega.oninput = ui;
+  let parteAuto = !p.dividido;
+  f.parte.addEventListener('input', () => parteAuto = false);
+  f.valor.oninput = () => { if (f.dividido.checked && parteAuto) f.parte.value = v(Math.round(num(f.valor.value) * 50) / 100); ui(); };
+  f.dividido.onchange = () => { if (f.dividido.checked && !num(f.parte.value)) { f.parte.value = v(Math.round(num(f.valor.value) * 50) / 100); parteAuto = true; } ui(); };
+  b.querySelector('[data-metade]').onclick = () => { f.parte.value = v(Math.round(num(f.valor.value) * 50) / 100); parteAuto = true; ui(); };
+  ui();
+  b.querySelectorAll('[data-grp]').forEach(x => x.onclick = () => { const id = x.dataset.grp, on = !x.classList.contains('on'); b.querySelectorAll('[data-grp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.toggle('hide', !on || y.dataset.mods !== id)); if (on) { f.localId.value = id; recalc(); ui(); } });
+  b.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { const m = S.modelos.find(y => y.id === x.dataset.mod); f.localId.value = m.localId; f.inicio.value = m.inicio; f.fim.value = m.fim; f.valor.value = v(m.valor); f.tag.value = tagModelo(m); if (m.nota) f.nota.value = m.nota; p.modeloId = m.id; b.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); recalc(); ui(); });
   if (f.pago) f.pago.onchange = () => { b.querySelector('[data-pago-box]').classList.toggle('hide', !f.pago.checked); if (f.pago.checked && !num(f.valorPago.value)) f.valorPago.value = v(num(f.valor.value) + num(f.extra.value)); };
   // Repetição
   let wds = [], datas = [p.data];
@@ -1077,7 +1133,7 @@ function formPlantao(id, preset = {}) {
   };
   f.onsubmit = async e => {
     e.preventDefault();
-    const o = { ...p, localId: f.localId.value, data: f.data.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), extra: num(f.extra.value), extraDesc: num(f.extra.value) ? f.extraDesc.value.trim() : '', prev: f.prev.value || '', notaSolicitada: f.notaSolicitada.value || '', nota: f.nota.value.trim(), importante: f.importante.checked, semLembrete: f.semLembrete.checked };
+    const o = { ...p, tag: f.tag.value.trim(), localId: f.localId.value, data: f.data.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), extra: num(f.extra.value), extraDesc: num(f.extra.value) ? f.extraDesc.value.trim() : '', prev: f.prev.value || '', notaSolicitada: f.notaSolicitada.value || '', nota: f.nota.value.trim(), importante: f.importante.checked, semLembrete: f.semLembrete.checked, dividido: f.dividido.checked, colega: f.dividido.checked ? f.colega.value.trim() : '', parte: f.dividido.checked ? num(f.parte.value) : 0 };
     if (f.pago) { o.pago = f.pago.checked; o.valorPago = o.pago ? num(f.valorPago.value) : 0; o.dataPago = o.pago ? (f.dataPago.value || HOJE) : ''; }
     if (novo) {
       const rep = lerRep(), ds = gerarDatas(o.data, rep);
@@ -1092,7 +1148,7 @@ function formPlantao(id, preset = {}) {
       return;
     }
     const serie = p.serieId ? S.plantoes.filter(x => x.serieId === p.serieId && x.data > p.data && !x.pago) : [];
-    const campos = ['localId','inicio','fim','valor','extra','extraDesc','nota','importante','semLembrete'];
+    const campos = ['localId','tag','inicio','fim','valor','extra','extraDesc','nota','importante','semLembrete','dividido','colega','parte'];
     const mudou = campos.filter(k => o[k] !== p[k]);
     let escopo = 'este';
     if (serie.length && mudou.length) { escopo = await confirmar('Aplicar alteração', 'Este plantão faz parte de uma repetição.', [{t:'Só este', v:'este', cls:'p'}, {t:`Este e os próximos (${serie.length + 1})`, v:'prox'}]); if (!escopo) return; }
@@ -1187,7 +1243,7 @@ function menuNovo() {
   const mods = sortBy(S.modelos, m => m.ordem ?? 0), d = S.sel || HOJE;
   const b = openSheet('Adicionar', `
     <div class="muted" style="margin-bottom:8px">Plantão em <b>${dataLonga(d)}</b> <button class="btn sm g" data-trocadata>trocar</button><input type="date" class="in hide" data-novadata value="${d}" style="margin-top:6px"></div>
-    ${mods.length ? `<div class="h" style="margin-top:6px">Com um toque</div><div class="card">${mods.map(m => { const l = loc(m.localId); return `<button class="li" style="width:100%" data-addm="${m.id}"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><div class="g"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></div>${ic('plus')}</button>`; }).join('')}</div>` : `<div class="dica">Crie modelos de plantão em Ajustes para adicionar com um toque.</div>`}
+    ${mods.length ? `<div class="h" style="margin-top:6px">Com um toque</div><div class="card">${gruposMod().map((g, gi, arr) => `<button class="li grp" style="width:100%" data-mg="${g.l.id}"><span class="sq" style="--c:${g.l.cor}">${esc(sigla(g.l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(g.l.nome)}</b><span>${g.ms.length} modelo${g.ms.length === 1 ? '' : 's'}</span></div>${ic('dn')}</button><div class="subgrp ${arr.length > 1 ? 'hide' : ''}" data-mgb="${g.l.id}">${g.ms.map(m => `<button class="li" style="width:100%" data-addm="${m.id}"><span class="sq" style="--c:${g.l.cor}">${hh(dur(m))}</span><div class="g"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></div>${ic('plus')}</button>`).join('')}</div>`).join('')}</div>` : `<div class="dica">Crie modelos de plantão em Ajustes para adicionar com um toque.</div>`}
     <div class="btns" style="margin-top:14px;flex-direction:column">
       <button class="btn w" data-o="p">${ic('ed')}Plantão personalizado</button>
       <button class="btn w" data-o="r">${ic('cal')}Montar o mês (repetir)</button>
@@ -1198,6 +1254,7 @@ function menuNovo() {
   b.querySelector('[data-trocadata]').onclick = () => b.querySelector('[data-novadata]').classList.toggle('hide');
   b.querySelector('[data-novadata]').onchange = e => { data = e.target.value || d; S.sel = data; b.querySelector('b').textContent = dataLonga(data); };
   b.addEventListener('click', e => {
+    const mg = e.target.closest('[data-mg]'); if (mg) { const bx = b.querySelector(`[data-mgb="${mg.dataset.mg}"]`); bx.classList.toggle('hide'); return; }
     const am = e.target.closest('[data-addm]'); if (am) { closeSheet(); addModelo(am.dataset.addm, data); return; }
     const o = e.target.closest('[data-o]'); if (!o) return;
     closeSheet();
@@ -1212,7 +1269,7 @@ async function addModelo(mid, data) {
   const p = novoDeModelo(m, data);
   await put('plantoes', p);
   S.sel = data; S.mes = data.slice(0, 7);
-  toast(`${m.nome} · ${ddmm(data)}`, 'Desfazer', () => del('plantoes', p.id));
+  toast(`${m.nome} · ${ddmm(data)}`, 'Desfazer', () => del('plantoes', p.id), 'Editar', () => formPlantao(p.id));
 }
 
 /* =========================================================
@@ -1266,11 +1323,11 @@ async function pushTeste() {
 /* =========================================================
    CSV / BACKUP
    ========================================================= */
-const CSV_COLS = ['data','local','inicio','fim','horas','valor','adicional','desc_adicional','pago','valor_pago','data_pago','pagamento_previsto','pagamento_solicitado','importante','observacao'];
+const CSV_COLS = ['data','local','especialidade','dividido_com','sua_parte','inicio','fim','horas','valor','adicional','desc_adicional','pago','valor_pago','data_pago','pagamento_previsto','pagamento_solicitado','importante','observacao'];
 function csvDe(ps) {
   const q = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const nf = v => String(+v || 0).replace('.', ',');
-  const linhas = ps.map(p => [p.data, loc(p.localId).nome, p.inicio, p.fim, nf(Math.round(dur(p) / 6) / 10), nf(p.valor), nf(p.extra), p.extraDesc || '', p.pago ? 'sim' : 'nao', p.pago ? nf(p.valorPago) : '', p.dataPago || '', p.prev || '', p.notaSolicitada || '', p.importante ? 'sim' : 'nao', p.nota || ''].map(q).join(';'));
+  const linhas = ps.map(p => [p.data, loc(p.localId).nome, tagP(p), p.dividido ? (p.colega || 'colega') : '', p.dividido ? nf(p.parte) : '', p.inicio, p.fim, nf(Math.round(dur(p) / 6) / 10), nf(p.valor), nf(p.extra), p.extraDesc || '', p.pago ? 'sim' : 'nao', p.pago ? nf(p.valorPago) : '', p.dataPago || '', p.prev || '', p.notaSolicitada || '', p.importante ? 'sim' : 'nao', p.nota || ''].map(q).join(';'));
   return '﻿' + CSV_COLS.join(';') + '\n' + linhas.join('\n');
 }
 function baixar(nome, conteudo, tipo) {
@@ -1316,7 +1373,7 @@ function importarCSV() {
       let l = porNome(nome);
       if (!l) { l = { id: uid(), nome, sigla:'', cor: CORES[(S.locais.length + Object.keys(novosLocais).length) % CORES.length][0], tipo:'plantao', regra:'manual', ordem: S.locais.length + Object.keys(novosLocais).length }; novosLocais[nome.toLowerCase()] = l; ops.push({ col:'locais', obj:l }); }
       const pago = /^(sim|s|1|true|pago)$/i.test(g('pago'));
-      const p = { id: uid(), localId: l.id, data, inicio: normHora(g('inicio')) || '07:00', fim: normHora(g('fim')) || '19:00', valor: num(g('valor')), extra: num(g('adicional')), extraDesc: g('desc_adicional'), nota: g('observacao'), importante: /^(sim|s|1|true)$/i.test(g('importante')), semLembrete:false, pago, valorPago: pago ? (num(g('valor_pago')) || num(g('valor')) + num(g('adicional'))) : 0, dataPago: pago ? (normData(g('data_pago')) || data) : '', prev: normData(g('pagamento_previsto')) || prevPag(l, data), notaSolicitada: normData(g('pagamento_solicitado')) };
+      const p = { id: uid(), localId: l.id, tag: g('especialidade'), dividido: !!g('dividido_com'), colega: g('dividido_com'), parte: num(g('sua_parte')), data, inicio: normHora(g('inicio')) || '07:00', fim: normHora(g('fim')) || '19:00', valor: num(g('valor')), extra: num(g('adicional')), extraDesc: g('desc_adicional'), nota: g('observacao'), importante: /^(sim|s|1|true)$/i.test(g('importante')), semLembrete:false, pago, valorPago: pago ? (num(g('valor_pago')) || (g('dividido_com') ? num(g('sua_parte')) : num(g('valor'))) + num(g('adicional'))) : 0, dataPago: pago ? (normData(g('data_pago')) || data) : '', prev: normData(g('pagamento_previsto')) || prevPag(l, data), notaSolicitada: normData(g('pagamento_solicitado')) };
       ops.push({ col:'plantoes', obj:p });
     });
     const n = ops.filter(o => o.col === 'plantoes').length, nl = Object.keys(novosLocais).length;
@@ -1370,6 +1427,7 @@ function formSenha() {
    ========================================================= */
 document.addEventListener('click', async e => {
   const nv = e.target.closest('[data-nav]'); if (nv) return go(nv.dataset.nav);
+  if (Date.now() - (S.noClick || 0) < 600) return;
   const a = e.target.closest('[data-act]'); if (!a || !S.uid) return;
   const act = a.dataset.act, id = a.dataset.id;
   switch (act) {
@@ -1381,9 +1439,11 @@ document.addEventListener('click', async e => {
     case 'modo': S.modo = S.modo === 'mes' ? 'lista' : 'mes'; return render();
     case 'priv': S.cfg.privacidade = !S.cfg.privacidade; saveCfg(); return render();
     case 'filtro': { const f = new Set(S.cfg.filtro || []); f.has(id) ? f.delete(id) : f.add(id); S.cfg.filtro = [...f]; saveCfg(); return render(); }
-    case 'filtroLimpa': S.cfg.filtro = []; saveCfg(); return render();
+    case 'filtroLimpa': S.cfg.filtro = []; S.cfg.filtroTag = []; saveCfg(); return render();
+    case 'filtroTag': { const f = new Set(S.cfg.filtroTag || []); f.has(id) ? f.delete(id) : f.add(id); S.cfg.filtroTag = [...f]; saveCfg(); return render(); }
+    case 'tagCor': S.cfg.tagCores = { ...(S.cfg.tagCores || {}), [a.dataset.t]: a.dataset.v }; saveCfg(); return render();
     case 'okInstala': localStorage.setItem(LS('dicaInstala'), '1'); return render();
-    case 'editP': return formPlantao(id);
+    case 'editP': { const pp = S.plantoes.find(x => x.id === id); if (pp && a.classList.contains('bar')) S.sel = pp.data; return formPlantao(id); }
     case 'novoP': return formPlantao(null, { data: S.sel });
     case 'addMod': return addModelo(id, S.sel);
     case 'pagar': return formPagar(id);
@@ -1403,12 +1463,15 @@ document.addEventListener('click', async e => {
     case 'novoLocal': return formLocal();
     case 'editLocal': return formLocal(id);
     case 'novoModelo': return formModelo();
+    case 'novoModeloLocal': return formModelo(null, id);
+    case 'modGrp': S.modOpen = S.modOpen || {}; S.modOpen[id] = !S.modOpen[id]; return render();
+    case 'qLoc': S.qLoc = id || null; return render();
     case 'editModelo': return formModelo(id);
     case 'novaFer': return formFerias();
     case 'editFer': return formFerias(id);
     case 'ordL': case 'ordM': {
       const col = act === 'ordL' ? 'locais' : 'modelos';
-      const lst = act === 'ordL' ? locaisOrd() : sortBy(S.modelos, m => m.ordem ?? 0);
+      const lst = act === 'ordL' ? locaisOrd() : modsDe((S.modelos.find(m => m.id === id) || {}).localId);
       const i = lst.findIndex(x => x.id === id), j = i + +a.dataset.d;
       if (j < 0 || j >= lst.length) return;
       [lst[i], lst[j]] = [lst[j], lst[i]];
@@ -1428,12 +1491,67 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (!S.uid || t.closest('.ov')) return;
   if (t.dataset.rel) { S.rel[t.dataset.rel] = t.value; if (t.dataset.rel === 'local') S.rel.ciclo = ''; return render(); }
+  if (t.dataset.tagcustom) { S.cfg.tagCores = { ...(S.cfg.tagCores || {}), [t.dataset.tagcustom]: t.value }; saveCfg(); return render(); }
   if (t.dataset.cfgl) { S.cfg.lembretes[t.dataset.cfgl] = t.value; saveCfg(); return toast('Lembrete salvo'); }
   if (t.name === 'lAtivo') { S.cfg.lembretes.ativo = t.checked; saveCfg(); return; }
   if (t.name === 'lPag') { S.cfg.lembretes.pag = t.checked; saveCfg(); return; }
   if (t.name === 'noturno') { S.cfg.noturnoDoisDias = t.checked; saveCfg(); return; }
   if (t.name === 'privacidade') { S.cfg.privacidade = t.checked; saveCfg(); return; }
 });
+/* ---------- Arrastar plantão para outro dia ---------- */
+let drag = null;
+const ptr = e => { const t = e.touches ? (e.touches[0] || e.changedTouches[0]) : e; return { x: t.clientX, y: t.clientY }; };
+function dStart(e) {
+  const bar = e.target.closest && e.target.closest('.bar[data-drag]');
+  if (!bar || !S.uid || (e.button && e.button !== 0)) return;
+  const p0 = ptr(e);
+  drag = { id: bar.dataset.id, bar, x0: p0.x, y0: p0.y, on: false, last: p0 };
+  drag.t = setTimeout(() => {
+    if (!drag) return;
+    drag.on = true; if (navigator.vibrate) navigator.vibrate(15);
+    const g = document.createElement('i'); g.className = 'bar ghost'; g.style.cssText = drag.bar.getAttribute('style'); g.textContent = drag.bar.textContent;
+    document.body.appendChild(g); drag.g = g; drag.bar.classList.add('arrastando'); dPos(drag.last);
+  }, 320);
+}
+function dPos(p) {
+  drag.g.style.left = (p.x - 28) + 'px'; drag.g.style.top = (p.y - 34) + 'px';
+  const el = document.elementFromPoint(p.x, p.y), cell = el && el.closest('.dia');
+  document.querySelectorAll('.dia.alvo').forEach(x => x !== cell && x.classList.remove('alvo'));
+  if (cell) cell.classList.add('alvo');
+  drag.alvo = cell ? cell.dataset.d : '';
+}
+function dMove(e) {
+  if (!drag) return;
+  const p = ptr(e); drag.last = p;
+  if (!drag.on) { if (Math.hypot(p.x - drag.x0, p.y - drag.y0) > 8) { clearTimeout(drag.t); drag = null; } return; }
+  if (e.cancelable) e.preventDefault();
+  dPos(p);
+}
+function dEnd() {
+  if (!drag) return;
+  clearTimeout(drag.t);
+  const d = drag;
+  drag = null;
+  if (!d.on) return;
+  S.noClick = Date.now();
+  d.g.remove(); d.bar.classList.remove('arrastando');
+  document.querySelectorAll('.dia.alvo').forEach(x => x.classList.remove('alvo'));
+  if (d.alvo) moverPlantao(d.id, d.alvo);
+}
+async function moverPlantao(id, dia) {
+  const p = S.plantoes.find(x => x.id === id); if (!p || p.data === dia) return;
+  const antes = { ...p }, l = loc(p.localId);
+  const auto = !p.prev || p.prev === prevPag(l, p.data);
+  await put('plantoes', { ...p, data: dia, prev: !p.pago && auto ? prevPag(l, dia) : p.prev });
+  S.sel = dia; render();
+  toast(`Movido para ${ddmm(dia)}`, 'Desfazer', () => put('plantoes', antes));
+}
+document.addEventListener('touchstart', dStart, { passive: true });
+document.addEventListener('touchmove', dMove, { passive: false });
+document.addEventListener('touchend', dEnd); document.addEventListener('touchcancel', dEnd);
+document.addEventListener('mousedown', dStart); document.addEventListener('mousemove', dMove); document.addEventListener('mouseup', dEnd);
+document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.dia')) e.preventDefault(); });
+
 window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (['agenda','financeiro','relatorios','ajustes'].includes(v) && v !== S.view) { S.view = v; render(); } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.uid && hojeISO() !== HOJE) { const antigo = HOJE; HOJE = hojeISO(); if (S.sel === antigo) { S.sel = HOJE; S.mes = HOJE.slice(0,7); } render(); } });
 
