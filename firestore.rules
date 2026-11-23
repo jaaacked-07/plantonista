@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
     function codigoConvite() {
-      return get(/databases/$(db)/documents/config/app).data.convite;
+      return get(/databases/$(db)/documents/config/app).data.get('convite', '');
     }
     // Código de convite e chaves secretas: ninguém lê pelo app
     match /config/{doc} { allow read, write: if false; }
@@ -19,12 +19,12 @@ service cloud.firestore {
                     && request.resource.data.convite == codigoConvite();
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.convite == resource.data.convite
-                    && resource.data.bloqueado != true;
+                    && resource.data.get('bloqueado', false) != true;
       allow delete: if false;
       match /{col}/{id} {
         allow read, write: if request.auth != null && request.auth.uid == uid
                            && exists(/databases/$(db)/documents/users/$(uid))
-                           && get(/databases/$(db)/documents/users/$(uid)).data.bloqueado != true;
+                           && get(/databases/$(db)/documents/users/$(uid)).data.get('bloqueado', false) != true;
       }
     }
   }
