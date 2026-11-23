@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plantonista</title>
+<meta name="theme-color" content="#F7F5F0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Plantonista">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --roxo:#6B2BD6;--roxo-esc:#4E1BA3;--roxo-cl:#EFE8FC;--roxo-md:#D9CCF6;
+  --papel:#F7F5F0;--branco:#FFFFFF;--tinta:#17141F;--cinza:#5B5670;--cinza2:#8C8799;
+  --linha:#E3DED2;--linha2:#ECE8DF;
+  --ambar:#9A5B00;--ambar-cl:#FFF1D6;--verde:#1F7A4D;--verde-cl:#E2F2E8;--verm:#B42318;--verm-cl:#FDECEA;
+  --mono:'JetBrains Mono',ui-monospace,monospace;--cond:'Barlow Condensed','Arial Narrow',sans-serif;--mao:'Satisfy',cursive;
+  --sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--papel);color:var(--tinta);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.hide{display:none!important}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* ---------- Estrutura ---------- */
+#app{max-width:760px;margin:0 auto;padding:calc(var(--st) + 14px) 16px calc(var(--sb) + 96px)}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:4px 0 18px}
+.titulo{font-family:var(--mao);color:var(--roxo);font-size:46px;line-height:1;font-weight:400}
+.titulo small{font-family:var(--mono);color:var(--cinza);font-size:14px;margin-left:8px;letter-spacing:0}
+.top-acts{display:flex;gap:6px;align-items:center}
+.ib{width:38px;height:38px;border:1px solid var(--linha);background:var(--branco);border-radius:4px;display:inline-flex;align-items:center;justify-content:center}
+.ib:active{background:var(--roxo-cl)}
+.h{font-family:var(--cond);font-weight:600;font-size:19px;text-transform:uppercase;letter-spacing:.6px;margin:26px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.h .sub{font-family:Inter;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;color:var(--cinza)}
+.card{background:var(--branco);border:1px solid var(--linha);border-radius:4px;padding:14px 16px}
+.card+.card{margin-top:10px}
+.muted{color:var(--cinza);font-size:13px}
+.vazio{border:1px dashed var(--linha);border-radius:4px;padding:18px;text-align:center;color:var(--cinza);font-size:14px;background:transparent}
+
+/* ---------- Navegação ---------- */
+nav.bot{position:fixed;left:0;right:0;bottom:0;background:var(--branco);border-top:1px solid var(--linha);padding:6px 8px calc(var(--sb) + 6px);display:flex;justify-content:space-around;align-items:center;z-index:30}
+nav.bot button{display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--cond);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza2);padding:4px 8px;min-width:62px}
+nav.bot button.on{color:var(--roxo)}
+nav.bot .mais{width:52px;height:52px;border-radius:4px;background:var(--roxo);color:#fff;justify-content:center;margin-top:-22px;min-width:0;padding:0}
+nav.bot .mais svg{width:26px;height:26px;stroke-width:2.2}
+
+/* ---------- Botões / campos ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:42px;padding:0 16px;border-radius:4px;font-family:var(--cond);font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.6px;border:1px solid var(--linha);background:var(--branco)}
+.btn.p{background:var(--roxo);border-color:var(--roxo);color:#fff}
+.btn.p:active{background:var(--roxo-esc)}
+.btn.g{border-color:transparent;background:transparent;color:var(--roxo)}
+.btn.d{color:var(--verm);border-color:#F2C9C4}
+.btn.sm{height:34px;font-size:14px;padding:0 12px}
+.btn.w{width:100%}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns .btn{flex:1}
+label.f{display:block;margin-bottom:12px}
+label.f>span{display:block;font-family:var(--cond);font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);margin-bottom:4px}
+.in{width:100%;height:44px;border:1px solid var(--linha);border-radius:4px;background:var(--branco);padding:0 12px;font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
+textarea.in{height:auto;min-height:70px;padding:10px 12px;resize:vertical}
+select.in{background-image:linear-gradient(45deg,transparent 50%,var(--cinza) 50%),linear-gradient(135deg,var(--cinza) 50%,transparent 50%);background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.in:focus{border-color:var(--roxo);box-shadow:0 0 0 3px var(--roxo-cl)}
+input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--mono);font-size:15px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--linha2)}
+.sw:first-child{border-top:0}
+.sw .t{font-weight:500}
+.sw .t .muted{font-weight:400;display:block}
+.tg{position:relative;width:46px;height:28px;flex-shrink:0}
+.tg input{opacity:0;width:0;height:0;position:absolute}
+.tg i{position:absolute;inset:0;background:var(--linha);border-radius:14px;transition:.2s}
+.tg i:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.tg input:checked+i{background:var(--roxo)}
+.tg input:checked+i:before{transform:translateX(18px)}
+.seg{display:flex;border:1px solid var(--linha);border-radius:4px;background:var(--branco);overflow:hidden}
+.seg button{flex:1;height:36px;font-family:var(--cond);font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);border-left:1px solid var(--linha);padding:0 8px;white-space:nowrap}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--roxo);color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:32px;padding:0 12px;border:1px solid var(--linha);border-radius:16px;background:var(--branco);font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip.on{background:var(--roxo-cl);border-color:var(--roxo);color:var(--roxo-esc);font-weight:500}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.cores{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cor{width:34px;height:34px;border-radius:4px;background:var(--c);border:2px solid transparent;position:relative}
+.cor.on{box-shadow:0 0 0 2px var(--branco),0 0 0 4px var(--tinta)}
+.cor input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+.cor.custom{background:conic-gradient(#e11d48,#f59e0b,#16a34a,#0ea5e9,#6B2BD6,#e11d48)}
+
+/* ---------- Agenda ---------- */
+.mesnav{display:flex;align-items:center;gap:6px}
+.filtros{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 12px;padding:0 16px 2px;scrollbar-width:none}
+.filtros::-webkit-scrollbar{display:none}
+.cal{background:var(--branco);border:1px solid var(--linha);border-radius:4px;overflow:hidden}
+.cal-h{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--linha)}
+.cal-h div{font-family:var(--cond);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);text-align:center;padding:7px 0}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr)}
+.dia{min-height:76px;border-right:1px solid var(--linha2);border-bottom:1px solid var(--linha2);padding:4px 3px;text-align:left;display:flex;flex-direction:column;gap:2px;position:relative;overflow:hidden}
+.dia:nth-child(7n){border-right:0}
+.dia .n{font-family:var(--mono);font-size:12.5px;font-weight:500;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;margin-left:1px}
+.dia.fora .n{color:var(--cinza2);opacity:.55}
+.dia.fora .bar{opacity:.45}
+.dia.hoje .n{background:var(--roxo);color:#fff}
+.dia.sel{background:var(--roxo-cl)}
+.dia.ferias{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(107,43,214,.08) 6px 12px)}
+.dia .bar{display:block;font-style:normal;background:var(--c);color:#fff;font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.3px;line-height:15px;height:15px;padding:0 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.dia .bar.cont{background:transparent;color:var(--c);border:1px dashed var(--c);line-height:13px}
+.dia .bar.atr{box-shadow:inset 3px 0 0 #F5A524}
+.dia .mais{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--cinza)}
+.dia .fx{position:absolute;right:3px;top:5px;width:6px;height:6px;border-radius:50%;background:var(--roxo-md)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--linha);border-radius:4px;background:var(--branco);margin-top:10px}
+.stats div{padding:10px 8px;border-left:1px solid var(--linha2);text-align:center}
+.stats div:first-child{border-left:0}
+.stats b{display:block;font-family:var(--mono);font-size:17px;font-weight:600}
+.stats span{font-family:var(--cond);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza)}
+.diatit{font-family:var(--mao);color:var(--roxo);font-size:30px;line-height:1.1;margin:22px 0 10px}
+.diatit small{font-family:Inter;color:var(--cinza);font-size:13px;margin-left:6px}
+.qadd{display:flex;gap:6px;overflow-x:auto;margin:10px -16px 0;padding:0 16px 2px;scrollbar-width:none}
+.qadd::-webkit-scrollbar{display:none}
+
+/* ---------- Cartão de plantão ---------- */
+.pc{display:flex;align-items:stretch;background:var(--branco);border:1px solid var(--linha);border-radius:4px;overflow:hidden}
+.pc+.pc{margin-top:8px}
+.pc-b{width:5px;background:var(--c);flex-shrink:0}
+.pc-m{flex:1;padding:10px 12px;text-align:left;min-width:0}
+.pc-t{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-t .star{color:#E0A000;margin-right:3px}
+.pc-s{font-size:13px;color:var(--cinza)}
+.pc-n{font-size:13px;color:var(--cinza);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-r{padding:10px 4px 10px 0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}
+.pc-r .val{font-size:14px;font-weight:600}
+.pc-pay{width:48px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
+.pc-pay.on{color:var(--verde);background:var(--verde-cl)}
+.st{font-family:var(--cond);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;padding:1px 7px;border-radius:2px;white-space:nowrap}
+.st.pago{background:var(--verde-cl);color:var(--verde)}
+.st.atrasado{background:var(--ambar-cl);color:var(--ambar)}
+.st.aberto{background:var(--roxo-cl);color:var(--roxo-esc)}
+.st.nota{background:#EEF0F4;color:#3D4556}
+.fer{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--roxo-md);background:var(--roxo-cl);border-radius:4px;padding:10px 12px;margin-bottom:8px;color:var(--roxo-esc);font-size:14px}
+.dsep{font-family:var(--cond);font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);margin:16px 0 6px;display:flex;justify-content:space-between}
+.dsep:first-child{margin-top:0}
+
+/* ---------- Financeiro / relatórios ---------- */
+.mets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.met{background:var(--branco);border:1px solid var(--linha);border-radius:4px;padding:12px 14px}
+.met span{font-family:var(--cond);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);display:block}
+.met b{font-family:var(--mono);font-size:20px;font-weight:600;display:block;margin-top:2px;white-space:nowrap}
+.met.dest{background:var(--roxo);border-color:var(--roxo);color:#fff}
+.met.dest span{color:#E5DAFB}
+.met.alerta b{color:var(--ambar)}
+.met small{font-size:12px;color:var(--cinza)}
+.met.dest small{color:#E5DAFB}
+.ln{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linha2)}
+.ln:first-child{border-top:0}
+.ln .dot{width:10px;height:10px;border-radius:2px;background:var(--c);flex-shrink:0}
+.ln .g{flex:1;min-width:0}
+.ln .g b{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln .g span{font-size:13px;color:var(--cinza)}
+.ln .v{font-family:var(--mono);font-weight:600;font-size:14px;text-align:right;white-space:nowrap}
+.ln .v small{display:block;font-family:Inter;font-weight:400;font-size:12px;color:var(--cinza)}
+.loc-h{display:flex;align-items:center;gap:10px;width:100%;text-align:left}
+.loc-h .g{flex:1;min-width:0}
+.loc-h b{font-weight:600}
+.tot{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--tinta);margin-top:6px;padding-top:8px;font-weight:600}
+.tot .mono{color:var(--roxo)}
+table.tb{width:100%;border-collapse:collapse;font-size:13.5px}
+.tb th{font-family:var(--cond);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);text-align:left;padding:6px 6px;border-bottom:1px solid var(--linha)}
+.tb td{padding:8px 6px;border-bottom:1px solid var(--linha2);vertical-align:top}
+.tb .r{text-align:right}
+.tb td.r{font-family:var(--mono);white-space:nowrap}
+.tbw{overflow-x:auto;padding:10px 12px}
+.tb td,.tb th{white-space:nowrap}
+.tb td.wrap{white-space:normal;min-width:110px}
+.chart svg{width:100%;height:auto;display:block}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--cinza);margin-top:6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.relf{display:grid;gap:10px}
+
+/* ---------- Ajustes ---------- */
+.li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linha2)}
+.li:first-child{border-top:0}
+.li .g{flex:1;min-width:0;text-align:left}
+.li .g b{font-weight:600;display:block}
+.li .g span{font-size:13px;color:var(--cinza)}
+.li .sq{width:30px;height:30px;border-radius:4px;background:var(--c);flex-shrink:0;color:#fff;font-family:var(--cond);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;letter-spacing:.3px}
+.ord{display:flex;flex-direction:column}
+.ord button{width:34px;height:22px;display:flex;align-items:center;justify-content:center;color:var(--cinza)}
+.ord button:disabled{opacity:.25}
+.ord svg{width:16px;height:16px}
+
+/* ---------- Folha (modal) ---------- */
+.ov{position:fixed;inset:0;background:rgba(23,20,31,.42);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fd .15s}
+.sh{background:var(--papel);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border-radius:8px 8px 0 0;padding:8px 18px calc(var(--sb) + 18px);animation:up .2s ease-out;-webkit-overflow-scrolling:touch}
+.sh .grab{width:40px;height:4px;background:var(--linha);border-radius:2px;margin:4px auto 10px}
+.sh-t{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-t h3{font-family:var(--mao);font-weight:400;color:var(--roxo);font-size:32px;line-height:1.1}
+@media(min-width:700px){.ov{align-items:center}.sh{border-radius:8px}}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fd{from{opacity:0}to{opacity:1}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 84px);background:var(--tinta);color:#fff;padding:10px 14px;border-radius:4px;font-size:14px;z-index:60;display:flex;gap:14px;align-items:center;max-width:92vw;animation:up .2s}
+.toast button{color:#C9B4F5;font-family:var(--cond);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.mini-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mini-cal button{height:36px;border:1px solid var(--linha);border-radius:4px;background:var(--branco);font-family:var(--mono);font-size:13px}
+.mini-cal button.on{background:var(--roxo);color:#fff;border-color:var(--roxo)}
+.mini-cal span{text-align:center;font-family:var(--cond);font-weight:600;font-size:12px;color:var(--cinza)}
+.paylist{max-height:260px;overflow-y:auto;border:1px solid var(--linha);border-radius:4px;background:var(--branco);padding:0 12px;margin-bottom:12px}
+.paylist label{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--linha2);font-size:14px}
+.paylist label:first-child{border-top:0}
+.paylist input{width:18px;height:18px;accent-color:var(--roxo)}
+.paylist .mono{margin-left:auto}
+.dica{background:var(--roxo-cl);border:1px solid var(--roxo-md);color:var(--roxo-esc);border-radius:4px;padding:10px 12px;font-size:13.5px;margin-bottom:12px}
+.err{color:var(--verm);font-size:13.5px;margin:-4px 0 10px}
+
+/* ---------- Login ---------- */
+.login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:24px;max-width:400px;margin:0 auto}
+.login .logo{font-family:var(--mao);color:var(--roxo);font-size:64px;text-align:center;line-height:1.1;transform:rotate(-5deg);margin-bottom:6px}
+.login .tag{text-align:center;color:var(--cinza);font-size:14px;margin-bottom:30px}
+.login .link{display:block;margin:16px auto 0;color:var(--roxo);font-size:14px;text-decoration:underline}
+.boot{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:var(--mao);color:var(--roxo);font-size:52px}
+
+/* ---------- Impressão (PDF) ---------- */
+#print{display:none}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#fff}
+  #app,nav.bot,.ov,.toast{display:none!important}
+  #print{display:block;color:#17141F;font-size:11.5px}
+  #print .pl{font-family:var(--mao);color:var(--roxo);font-size:30px}
+  #print h2{font-family:var(--cond);font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:15px;margin:16px 0 6px;border-bottom:2px solid #17141F;padding-bottom:3px}
+  #print table{width:100%;border-collapse:collapse}
+  #print th,#print td{border-bottom:1px solid #DDD;padding:4px 5px;text-align:left}
+  #print th{font-family:var(--cond);text-transform:uppercase;font-size:11px;color:#5B5670}
+  #print .r{text-align:right;font-family:var(--mono);white-space:nowrap}
+  #print .pm{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  #print .pm div{border:1px solid #DDD;padding:6px 8px}
+  #print .pm span{display:block;font-family:var(--cond);text-transform:uppercase;font-size:10.5px;color:#5B5670}
+  #print .pm b{font-family:var(--mono);font-size:13px}
+  #print .chart svg{max-height:200px}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="boot">Plantonista</div></div>
+<nav class="bot hide" id="nav"></nav>
+<div id="print"></div>
+
+<script type="module">
+/* =========================================================
+   PLANTONISTA — agenda de plantões + controle financeiro
+   ========================================================= */
+const FB_CFG = {
+  apiKey: "AIzaSyArHABRbjIZi4XfnXoz94JMLbn6wP5SaSQ",
+  authDomain: "plantonista-87e46.firebaseapp.com",
+  projectId: "plantonista-87e46",
+  storageBucket: "plantonista-87e46.firebasestorage.app",
+  messagingSenderId: "584723414839",
+  appId: "1:584723414839:web:eba7a0bac2e1c2d7e3e4b2"
+};
+const FBV = '10.12.4';
+const DOMINIO = '@plantonista.app';
+const VERSAO = '1.0';
+
+/* ---------- Ícones ---------- */
+const IC = {
+  cal:'<rect x="3" y="4.5" width="18" height="16" rx="1.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+  din:'<rect x="2.5" y="6" width="19" height="12" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  rel:'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  aj:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  l:'<path d="M15 18l-6-6 6-6"/>', r:'<path d="M9 18l6-6-6-6"/>',
+  up:'<path d="M18 15l-6-6-6 6"/>', dn:'<path d="M6 9l6 6 6-6"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  ok:'<path d="M20 6L9 17l-5-5"/>', x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  ed:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  lixo:'<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="1.5"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+  dl:'<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>', ul:'<path d="M12 21V9M7 14l5-5 5 5M4 3h16"/>',
+  star:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+  sair:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
+};
+const ic = (n, cls='') => `<svg class="i ${cls}" viewBox="0 0 24 24">${IC[n]}</svg>`;
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const p2 = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const pd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d||1); };
+const addD = (s, n) => { const d = pd(s); d.setDate(d.getDate()+n); return iso(d); };
+const addM = (ym, n) => { const [y,m] = ym.split('-').map(Number); const d = new Date(y, m-1+n, 1); return `${d.getFullYear()}-${p2(d.getMonth()+1)}`; };
+const dow = s => pd(s).getDay();
+const diffD = (a, b) => Math.round((pd(a) - pd(b)) / 864e5);
+const hojeISO = () => iso(new Date());
+let HOJE = hojeISO();
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const MESC = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const SEM = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const SEMC = ['dom','seg','ter','qua','qui','sex','sáb'];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const nomeMes = ym => cap(MESES[+ym.slice(5,7)-1]);
+const mesCurto = ym => `${MESC[+ym.slice(5,7)-1]}/${ym.slice(2,4)}`;
+const ddmm = s => s ? `${s.slice(8,10)}/${s.slice(5,7)}` : '—';
+const ddmmaa = s => s ? `${s.slice(8,10)}/${s.slice(5,7)}/${s.slice(0,4)}` : '—';
+const dataLonga = s => { const d = pd(s); return `${cap(SEM[d.getDay()])}, ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const BRL = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
+const money = v => BRL.format(+v || 0);
+const num = v => { if (typeof v === 'number') return v; const s = String(v||'').trim().replace(/[R$\s]/g,''); if (!s) return 0; const n = s.includes(',') ? s.replace(/\./g,'').replace(',', '.') : s; return +n || 0; };
+const tm = s => { if (!s) return 0; const [h,m] = s.split(':').map(Number); return h*60 + (m||0); };
+const dur = p => { if (!p.inicio || !p.fim) return 0; let d = tm(p.fim) - tm(p.inicio); if (d <= 0) d += 1440; return d; };
+const cruza = p => p.inicio && p.fim && tm(p.fim) <= tm(p.inicio) && tm(p.fim) > 0;
+const hh = m => { m = Math.round(m); const h = Math.floor(m/60), r = m%60; return r ? `${h}h${p2(r)}` : `${h}h`; };
+const total = p => (+p.valor||0) + (+p.extra||0);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const sortBy = (arr, f) => arr.slice().sort((a,b) => { const x = f(a), y = f(b); return x < y ? -1 : x > y ? 1 : 0; });
+const LS = k => 'plantonista:' + k;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+const CORES = [['#6B2BD6','Roxo'],['#2563EB','Azul'],['#0F8B8D','Petróleo'],['#2E9E5B','Verde'],['#D97706','Âmbar'],['#EA580C','Laranja'],['#DC2626','Vermelho'],['#DB2777','Rosa'],['#475569','Grafite']];
+const ANTES = [[30,'30 min'],[60,'1h'],[120,'2h'],[180,'3h'],[360,'6h'],[720,'12h'],[1440,'24h']];
+const DEFCFG = () => ({ semana:'dom', noturnoDoisDias:true, privacidade:false, filtro:[], lembretes:{ ativo:true, vespera:'20:00', antes:[120], pag:true, pagHora:'09:00', atrasados:'seg' } });
+
+/* ---------- Estado ---------- */
+const S = {
+  uid:null, user:'', locais:[], modelos:[], plantoes:[], ferias:[], cfg:DEFCFG(),
+  view:'agenda', mes:HOJE.slice(0,7), sel:HOJE, modo:'mes', finMes:HOJE.slice(0,7), finOpen:{},
+  rel:{ tipo:'mes', mes:HOJE.slice(0,7), ano:HOJE.slice(0,4), local:'', ciclo:'', de:addD(HOJE,-30), ate:HOJE },
+  loaded:{}, pushErr:''
+};
+let FB = null, unsubs = [];
+
+/* ---------- Firebase ---------- */
+async function loadFB() {
+  const [appM, authM, fsM] = await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${FBV}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${FBV}/firebase-auth.js`),
+    import(`https://www.gstatic.com/firebasejs/${FBV}/firebase-firestore.js`)
+  ]);
+  const app = appM.initializeApp(FB_CFG);
+  let db;
+  try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
+  catch (e) { db = fsM.getFirestore(app); }
+  const auth = authM.getAuth(app);
+  try { await authM.setPersistence(auth, authM.indexedDBLocalPersistence); } catch (e) {}
+  FB = { app, db, auth, au: authM, fs: fsM };
+}
+const uref = (...p) => FB.fs.doc(FB.db, 'users', S.uid, ...p);
+const ucol = c => FB.fs.collection(FB.db, 'users', S.uid, c);
+const clean = o => JSON.parse(JSON.stringify(o));
+function put(col, obj) { obj.upd = Date.now(); return FB.fs.setDoc(uref(col, obj.id), clean(obj)).catch(errW); }
+function del(col, id) { return FB.fs.deleteDoc(uref(col, id)).catch(errW); }
+async function putMany(ops) { // ops: [{col, obj}|{col, id, del:true}]
+  for (let i = 0; i < ops.length; i += 450) {
+    const b = FB.fs.writeBatch(FB.db);
+    ops.slice(i, i+450).forEach(o => o.del ? b.delete(uref(o.col, o.id)) : (o.obj.upd = Date.now(), b.set(uref(o.col, o.obj.id), clean(o.obj))));
+    await b.commit().catch(errW);
+  }
+}
+function saveCfg() { return FB.fs.setDoc(uref('meta','config'), clean(S.cfg)).catch(errW); }
+function errW(e) { console.error(e); toast(e && e.code === 'permission-denied' ? 'Sem permissão para salvar. Fale com quem te convidou.' : 'Não foi possível salvar. Confira a conexão.'); }
+
+function listen() {
+  unsubs.forEach(u => u()); unsubs = [];
+  ['locais','modelos','plantoes','ferias'].forEach(c => {
+    unsubs.push(FB.fs.onSnapshot(ucol(c), snap => {
+      S[c] = snap.docs.map(d => d.data());
+      S.loaded[c] = true; schedule();
+    }, e => { console.error(c, e); if (e.code === 'permission-denied' && !S.retry) { S.retry = 1; setTimeout(() => { S.retry = 0; if (S.uid) listen(); }, 2500); } }));
+  });
+  unsubs.push(FB.fs.onSnapshot(uref('meta','config'), d => {
+    const def = DEFCFG(), v = d.exists() ? d.data() : {};
+    S.cfg = Object.assign(def, v, { lembretes: Object.assign(def.lembretes, v.lembretes || {}) });
+    S.loaded.cfg = true; schedule();
+  }));
+}
+let rq = 0;
+function schedule() { if (rq) return; rq = requestAnimationFrame(() => { rq = 0; render(); }); }
+
+/* ---------- Regras de negócio ---------- */
+const loc = id => S.locais.find(l => l.id === id) || { id, nome:'Local removido', cor:'#8C8799', sigla:'?' };
+const locaisAtivos = () => sortBy(S.locais.filter(l => !l.arquivado), l => l.ordem ?? 0);
+const locaisOrd = () => sortBy(S.locais, l => (l.arquivado ? 1e6 : 0) + (l.ordem ?? 0));
+const sigla = l => (l.sigla && l.sigla.trim()) || (l.nome || '').split(/\s+/)[0].slice(0, 7);
+function nextDay(ds, day) {
+  const [y,m,d] = ds.split('-').map(Number);
+  let last = new Date(y, m, 0).getDate(), c = Math.min(day, last);
+  if (c >= d) return iso(new Date(y, m-1, c));
+  last = new Date(y, m+1, 0).getDate();
+  return iso(new Date(y, m, Math.min(day, last)));
+}
+function prevPag(l, ds) {
+  if (!l || !ds || l.tipo === 'salario') return '';
+  if (l.regra === 'dias') return addD(ds, +l.dias || 0);
+  if (l.regra === 'ciclo' && +l.fecha && +l.paga) return nextDay(nextDay(ds, +l.fecha), +l.paga);
+  return '';
+}
+const status = p => p.pago ? 'pago' : (p.prev && p.prev < HOJE) ? 'atrasado' : 'aberto';
+const ST_TXT = { pago:'Pago', atrasado:'Atrasado', aberto:'A receber' };
+const chipSt = s => `<span class="st ${s}">${ST_TXT[s]}</span>`;
+function salarios() {
+  const out = [], cur = HOJE.slice(0, 7);
+  S.locais.filter(l => l.tipo === 'salario' && l.inicioSal && +l.salario).forEach(l => {
+    let m = l.inicioSal, g = 0;
+    const fim = l.fimSal && l.fimSal < cur ? l.fimSal : cur;
+    while (m <= fim && g++ < 360) {
+      const pg = (l.pagos || {})[m];
+      const mm = l.pagaMes === 'mesmo' ? m : addM(m, 1);
+      const last = new Date(+mm.slice(0,4), +mm.slice(5,7), 0).getDate();
+      const prev = `${mm}-${p2(Math.min(+l.pagaDia || 5, last))}`;
+      out.push({ sal:true, id:`sal_${l.id}_${m}`, localId:l.id, ref:m, valor:+l.salario, extra:0, prev, pago:!!pg, valorPago:pg ? +pg.valor : 0, dataPago:pg ? pg.data : '' });
+      m = addM(m, 1);
+    }
+  });
+  return out;
+}
+const recebiveis = () => [...S.plantoes, ...salarios()];
+const rotulo = r => r.sal ? `Salário de ${mesCurto(r.ref)}` : `${ddmm(r.data)}/${r.data.slice(2,4)} ${SEMC[dow(r.data)]} · ${hh(dur(r))}`;
+const visivel = p => !(S.cfg.filtro || []).length || S.cfg.filtro.includes(p.localId);
+const priv = () => !!S.cfg.privacidade;
+const mv = v => priv() ? 'R$ •••' : money(v);
+
+/* ---------- Toast / folha ---------- */
+let toastT;
+function toast(msg, acao, fn) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast';
+  t.innerHTML = `<span>${esc(msg)}</span>${acao ? `<button>${esc(acao)}</button>` : ''}`;
+  if (acao) t.querySelector('button').onclick = () => { fn(); t.remove(); };
+  document.body.appendChild(t);
+  clearTimeout(toastT); toastT = setTimeout(() => t.remove(), acao ? 5000 : 2600);
+}
+let sheetEl = null;
+function openSheet(titulo, html, onMount) {
+  closeSheet();
+  sheetEl = document.createElement('div'); sheetEl.className = 'ov';
+  sheetEl.innerHTML = `<div class="sh" role="dialog"><div class="grab"></div><div class="sh-t"><h3>${esc(titulo)}</h3><button class="ib" data-x aria-label="Fechar">${ic('x')}</button></div><div class="sh-b">${html}</div></div>`;
+  sheetEl.addEventListener('click', e => { if (e.target === sheetEl || e.target.closest('[data-x]')) closeSheet(); });
+  document.body.appendChild(sheetEl);
+  document.body.style.overflow = 'hidden';
+  if (onMount) onMount(sheetEl.querySelector('.sh-b'));
+  return sheetEl.querySelector('.sh-b');
+}
+function closeSheet() { if (sheetEl) { sheetEl.remove(); sheetEl = null; document.body.style.overflow = ''; } }
+function confirmar(titulo, texto, opcoes) { // opcoes: [{t, v, cls}]
+  return new Promise(res => {
+    const b = openSheet(titulo, `<p style="margin-bottom:16px">${texto}</p><div class="btns" style="flex-direction:column">${opcoes.map((o,i) => `<button class="btn w ${o.cls||''}" data-i="${i}">${esc(o.t)}</button>`).join('')}<button class="btn w g" data-i="-1">Cancelar</button></div>`);
+    b.addEventListener('click', e => { const x = e.target.closest('[data-i]'); if (!x) return; const i = +x.dataset.i; closeSheet(); res(i < 0 ? null : opcoes[i].v); });
+    sheetEl.addEventListener('click', e => { if (e.target === sheetEl || e.target.closest('[data-x]')) res(null); });
+  });
+}
+const tg = (name, on) => `<label class="tg"><input type="checkbox" name="${name}" ${on ? 'checked' : ''}><i></i></label>`;
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+function renderLogin(modo = 'entrar', erro = '') {
+  if (!erro && S.loginErr) { erro = S.loginErr; modo = S.loginModo || modo; }
+  S.loginErr = ''; S.loginModo = '';
+  $('#nav').classList.add('hide');
+  const novo = modo === 'criar';
+  $('#app').innerHTML = `<form class="login" id="flogin" autocomplete="on">
+    <div class="logo">Plantonista</div>
+    <div class="tag">Sua agenda de plantões que também cuida do seu dinheiro.</div>
+    <label class="f"><span>Usuário</span><input class="in" name="u" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+    <label class="f"><span>Senha</span><input class="in" type="password" name="s" autocomplete="${novo ? 'new-password' : 'current-password'}" required minlength="6"></label>
+    ${novo ? `<label class="f"><span>Confirmar senha</span><input class="in" type="password" name="s2" autocomplete="new-password" required></label>
+    <label class="f"><span>Código de convite</span><input class="in" name="c" autocapitalize="none" autocorrect="off" required></label>` : ''}
+    ${erro ? `<div class="err">${esc(erro)}</div>` : ''}
+    <button class="btn p w" type="submit">${novo ? 'Criar conta' : 'Entrar'}</button>
+    <button class="link" type="button" id="trocaModo">${novo ? 'Já tenho conta' : 'Criar conta com convite'}</button>
+  </form>`;
+  $('#trocaModo').onclick = () => renderLogin(novo ? 'entrar' : 'criar');
+  $('#flogin').onsubmit = async e => {
+    e.preventDefault();
+    const f = e.target, u = f.u.value.trim().toLowerCase(), s = f.s.value;
+    if (!/^[a-z0-9._-]{3,24}$/.test(u)) return renderLogin(modo, 'Use de 3 a 24 caracteres: letras, números, ponto, hífen ou sublinhado.');
+    const btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = 'Aguarde…';
+    try {
+      if (!novo) { await FB.au.signInWithEmailAndPassword(FB.auth, u + DOMINIO, s); return; }
+      if (s !== f.s2.value) return renderLogin(modo, 'As senhas não conferem.');
+      S.criando = true;
+      const cred = await FB.au.createUserWithEmailAndPassword(FB.auth, u + DOMINIO, s);
+      try {
+        await FB.fs.setDoc(FB.fs.doc(FB.db, 'users', cred.user.uid), { username:u, convite:f.c.value.trim(), criado:Date.now() });
+      } catch (err) {
+        S.loginErr = 'Código de convite inválido.'; S.loginModo = 'criar';
+        S.criando = false;
+        await cred.user.delete().catch(() => FB.au.signOut(FB.auth));
+        return renderLogin();
+      }
+      S.criando = false;
+      entrar(cred.user);
+    } catch (err) {
+      S.criando = false;
+      const c = err.code || '';
+      const msg = c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found') ? 'Usuário ou senha incorretos.'
+        : c.includes('email-already-in-use') ? 'Esse usuário já existe. Escolha outro.'
+        : c.includes('weak-password') ? 'A senha precisa ter pelo menos 6 caracteres.'
+        : c.includes('too-many-requests') ? 'Muitas tentativas. Espere alguns minutos.'
+        : c.includes('network') ? 'Sem conexão com a internet.' : 'Não foi possível entrar (' + c + ').';
+      renderLogin(modo, msg);
+    }
+  };
+}
+
+/* =========================================================
+   RENDER PRINCIPAL
+   ========================================================= */
+function render() {
+  if (!S.uid) return;
+  HOJE = hojeISO();
+  const nav = $('#nav'); nav.classList.remove('hide');
+  const it = (v, n, t) => `<button data-nav="${v}" class="${S.view === v ? 'on' : ''}">${ic(n)}${t}</button>`;
+  nav.innerHTML = it('agenda','cal','Agenda') + it('financeiro','din','Financeiro') + `<button class="mais" data-act="novo" aria-label="Adicionar">${ic('plus')}</button>` + it('relatorios','rel','Relatórios') + it('ajustes','aj','Ajustes');
+  const v = { agenda:vAgenda, financeiro:vFin, relatorios:vRel, ajustes:vAjustes }[S.view] || vAgenda;
+  const y = window.scrollY;
+  $('#app').innerHTML = v();
+  window.scrollTo(0, y);
+  badge();
+}
+function badge() {
+  if (!navigator.setAppBadge) return;
+  const lim = addD(HOJE, 7), n = S.plantoes.filter(p => p.data >= HOJE && p.data <= lim).length;
+  (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+}
+function go(view) { S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
+
+/* ---------- Cartão de plantão ---------- */
+function cardP(p, o = {}) {
+  const l = loc(p.localId), st = status(p), esconde = o.home && priv();
+  return `<div class="pc" style="--c:${l.cor}">
+    <div class="pc-b"></div>
+    <button class="pc-m" data-act="editP" data-id="${p.id}">
+      <div class="pc-t">${p.importante ? '<span class="star">★</span>' : ''}${esc(l.nome)}</div>
+      <div class="pc-s mono">${o.data ? ddmm(p.data) + ' ' + SEMC[dow(p.data)] + ' · ' : ''}${p.inicio}–${p.fim} · ${hh(dur(p))}</div>
+      ${p.extra ? `<div class="pc-n">+ ${esconde ? 'adicional' : money(p.extra)}${p.extraDesc ? ' · ' + esc(p.extraDesc) : ''}</div>` : ''}
+      ${p.nota ? `<div class="pc-n">${esc(p.nota)}</div>` : ''}
+    </button>
+    <div class="pc-r">${esconde ? '' : `<div class="mono val">${money(p.pago ? p.valorPago : total(p))}</div>${chipSt(st)}`}${!p.pago && p.prev && !esconde ? `<span class="muted mono" style="font-size:11.5px">pgto ${ddmm(p.prev)}</span>` : ''}</div>
+    ${esconde ? '' : `<button class="pc-pay ${p.pago ? 'on' : ''}" data-act="${p.pago ? 'despagar' : 'pagar'}" data-id="${p.id}" aria-label="${p.pago ? 'Desfazer pagamento' : 'Marcar como pago'}">${ic('ok')}</button>`}
+  </div>`;
+}
+
+/* =========================================================
+   AGENDA
+   ========================================================= */
+function vAgenda() {
+  const ym = S.mes, [y, m] = ym.split('-').map(Number);
+  const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${y}</small></div>
+    <div class="top-acts">
+      <button class="ib" data-act="priv" aria-label="Privacidade">${ic(priv() ? 'eyeoff' : 'eye')}</button>
+      <button class="ib" data-act="modo" aria-label="Alternar visão">${ic(S.modo === 'mes' ? 'list' : 'cal')}</button>
+    </div></div>`;
+  const locs = locaisAtivos();
+  const filtros = locs.length > 1 ? `<div class="filtros">${locs.map(l => `<button class="chip ${(S.cfg.filtro||[]).includes(l.id) ? 'on' : ''}" style="--c:${l.cor}" data-act="filtro" data-id="${l.id}"><span class="dot"></span>${esc(l.nome)}</button>`).join('')}${(S.cfg.filtro||[]).length ? `<button class="chip" data-act="filtroLimpa">Todos</button>` : ''}</div>` : '';
+  const intro = !S.locais.length ? `<div class="dica" style="margin-bottom:14px"><b>Comece por aqui:</b> cadastre seus locais de trabalho e seus modelos de plantão em <b>Ajustes</b>. Depois é só tocar no <b>+</b>.<div style="margin-top:8px"><button class="btn sm p" data-act="novoLocal">Cadastrar primeiro local</button></div></div>` : '';
+  const instala = isIOS && !isStandalone && !localStorage.getItem(LS('dicaInstala')) ? `<div class="dica" style="margin-bottom:14px">Para usar como app e receber lembretes: no Safari, toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. <button class="btn sm g" data-act="okInstala">Entendi</button></div>` : '';
+  if (S.modo === 'lista') return top + instala + intro + filtros + vLista();
+
+  const ws = S.cfg.semana === 'seg' ? 1 : 0;
+  const first = `${ym}-01`, off = (dow(first) - ws + 7) % 7, nd = new Date(y, m, 0).getDate();
+  const rows = Math.ceil((off + nd) / 7), start = addD(first, -off), end = addD(start, rows*7 - 1);
+  const map = {};
+  const ps = S.plantoes.filter(visivel);
+  ps.forEach(p => {
+    if (p.data < addD(start, -1) || p.data > end) return;
+    (map[p.data] ||= []).push({ p, cont:false });
+    if (S.cfg.noturnoDoisDias && cruza(p)) (map[addD(p.data, 1)] ||= []).push({ p, cont:true });
+  });
+  const emFerias = d => S.ferias.some(f => d >= f.inicio && d <= f.fim);
+  let cells = '';
+  for (let i = 0; i < rows*7; i++) {
+    const d = addD(start, i), lst = sortBy(map[d] || [], x => (x.cont ? '0' : '1') + x.p.inicio);
+    const bars = lst.slice(0, 3).map(({p, cont}) => { const l = loc(p.localId); return `<i class="bar ${cont ? 'cont' : ''} ${!cont && status(p) === 'atrasado' && !priv() ? 'atr' : ''}" style="--c:${l.cor}">${p.importante && !cont ? '★' : ''}${esc(sigla(l))}</i>`; }).join('');
+    cells += `<button class="dia ${d.slice(0,7) !== ym ? 'fora' : ''} ${d === HOJE ? 'hoje' : ''} ${d === S.sel ? 'sel' : ''} ${emFerias(d) ? 'ferias' : ''}" data-act="dia" data-d="${d}"><span class="n">${+d.slice(8)}</span>${bars}${lst.length > 3 ? `<i class="mais">+${lst.length - 3}</i>` : ''}</button>`;
+  }
+  const hdr = Array.from({length:7}, (_, i) => `<div>${SEMC[(i + ws) % 7]}</div>`).join('');
+  const doMes = ps.filter(p => p.data.slice(0,7) === ym);
+  const horas = doMes.reduce((s, p) => s + dur(p), 0), dias = new Set(doMes.map(p => p.data)).size;
+  const valor = doMes.reduce((s, p) => s + total(p), 0);
+  const nav = `<div class="mesnav" style="margin:-6px 0 12px"><button class="ib" data-act="mesAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="mesProx" aria-label="Próximo mês">${ic('r')}</button>${ym !== HOJE.slice(0,7) || S.sel !== HOJE ? `<button class="btn sm g" data-act="hoje">Hoje</button>` : ''}</div>`;
+  return top + instala + intro + nav + filtros + `<div class="cal"><div class="cal-h">${hdr}</div><div class="cal-g">${cells}</div></div>
+    <div class="stats"><div><b>${doMes.length}</b><span>Plantões</span></div><div><b>${hh(horas)}</b><span>Horas</span></div><div><b>${dias}</b><span>Dias</span></div><div><b style="font-size:${priv() ? 15 : valor >= 10000 ? 13.5 : 15}px">${mv(valor)}</b><span>No mês</span></div></div>
+    ${vDia(S.sel)}`;
+}
+function vDia(d) {
+  const lst = sortBy(S.plantoes.filter(p => p.data === d && visivel(p)), p => p.inicio);
+  const ont = S.cfg.noturnoDoisDias ? S.plantoes.filter(p => p.data === addD(d, -1) && cruza(p) && visivel(p)) : [];
+  const fer = S.ferias.filter(f => d >= f.inicio && d <= f.fim);
+  const mods = sortBy(S.modelos, m => m.ordem ?? 0);
+  return `<div class="diatit">${dataLonga(d)}${d === HOJE ? '<small>hoje</small>' : ''}</div>
+    ${fer.map(f => `<div class="fer"><span><b>${esc(f.desc || 'Férias')}</b> · ${ddmm(f.inicio)} a ${ddmm(f.fim)}</span><button class="btn sm g" data-act="editFer" data-id="${f.id}">Editar</button></div>`).join('')}
+    ${ont.map(p => `<div class="muted" style="margin-bottom:6px">Continuação: ${esc(loc(p.localId).nome)} até ${p.fim}</div>`).join('')}
+    ${lst.length ? lst.map(p => cardP(p, {home:true})).join('') : `<div class="vazio">Nenhum plantão neste dia.</div>`}
+    <div class="qadd">${mods.map(m => { const l = loc(m.localId); return `<button class="chip" style="--c:${l.cor}" data-act="addMod" data-id="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`; }).join('')}<button class="chip" data-act="novoP">${ic('plus')}Personalizado</button></div>`;
+}
+function vLista() {
+  const lim = addD(HOJE, 120);
+  const ps = sortBy(S.plantoes.filter(p => p.data >= HOJE && p.data <= lim && visivel(p)), p => p.data + p.inicio);
+  const fer = S.ferias.filter(f => f.fim >= HOJE && f.inicio <= lim);
+  if (!ps.length && !fer.length) return `<div class="vazio">Nenhum plantão nos próximos meses.</div>`;
+  let out = '', cur = '';
+  fer.forEach(f => out += `<div class="fer"><span><b>${esc(f.desc || 'Férias')}</b> · ${ddmm(f.inicio)} a ${ddmm(f.fim)}</span><button class="btn sm g" data-act="editFer" data-id="${f.id}">Editar</button></div>`);
+  ps.forEach(p => {
+    if (p.data !== cur) { cur = p.data; const dd = diffD(p.data, HOJE); out += `<div class="dsep"><span>${dataLonga(p.data)}</span><span>${dd === 0 ? 'hoje' : dd === 1 ? 'amanhã' : 'em ' + dd + ' dias'}</span></div>`; }
+    out += cardP(p, {home:true});
+  });
+  return out;
+}
+
+/* =========================================================
+   FINANCEIRO
+   ========================================================= */
+function vFin() {
+  const ym = S.finMes, R = recebiveis();
+  const recMes = R.filter(r => r.pago && (r.dataPago || '').slice(0,7) === ym);
+  const prevMes = R.filter(r => !r.pago && (r.prev || '').slice(0,7) === ym);
+  const atras = sortBy(R.filter(r => !r.pago && r.prev && r.prev < HOJE), r => r.prev);
+  const aberto = R.filter(r => !r.pago && total(r) > 0);
+  const sm = (a, f = total) => a.reduce((s, r) => s + f(r), 0);
+  const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${ym.slice(0,4)}</small></div>
+    <div class="top-acts"><button class="ib" data-act="finAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="finProx" aria-label="Próximo mês">${ic('r')}</button></div></div>`;
+  const mets = `<div class="mets">
+    <div class="met dest"><span>Recebido no mês</span><b>${money(sm(recMes, r => +r.valorPago || 0))}</b><small>${recMes.length} pagamento${recMes.length === 1 ? '' : 's'}</small></div>
+    <div class="met"><span>A receber no mês</span><b>${money(sm(prevMes))}</b><small>${prevMes.length} previsto${prevMes.length === 1 ? '' : 's'}</small></div>
+    <div class="met ${atras.length ? 'alerta' : ''}"><span>Atrasado</span><b>${money(sm(atras))}</b><small>${atras.length} pendente${atras.length === 1 ? '' : 's'}</small></div>
+    <div class="met"><span>Total em aberto</span><b>${money(sm(aberto))}</b><small>todos os meses</small></div></div>`;
+  const linha = r => { const l = loc(r.localId); const st = status(r); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><button class="g" style="text-align:left" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}</b><span class="mono">${rotulo(r)}${!r.pago && r.prev ? ` · pgto ${ddmm(r.prev)}` : ''}${r.pago ? ` · pago ${ddmm(r.dataPago)}` : ''}</span>${st === 'atrasado' ? `<span style="color:var(--ambar)"> · ${diffD(HOJE, r.prev)} dias de atraso</span>` : ''}</button><div class="v">${money(r.pago ? r.valorPago : total(r))}</div><button class="pc-pay ${r.pago ? 'on' : ''}" style="width:40px;height:40px;border:1px solid var(--linha2);border-radius:4px" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="Pagar">${ic('ok')}</button></div>`; };
+  // Nota / solicitação pendente
+  const notaPend = sortBy(S.plantoes.filter(p => !p.pago && !p.notaSolicitada && loc(p.localId).precisaNota && p.data <= HOJE), p => p.data);
+  // Por local
+  const porLocal = locaisOrd().map(l => ({ l, itens: aberto.filter(r => r.localId === l.id) })).filter(x => x.itens.length);
+  let html = top + mets;
+  if (atras.length) html += `<div class="h">Atrasados<span class="sub">${atras.length} · ${money(sm(atras))}</span></div><div class="card">${atras.map(linha).join('')}</div>`;
+  if (notaPend.length) html += `<div class="h">Solicitar pagamento<span class="sub">emitir nota</span></div><div class="card">${notaPend.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><div class="g"><b>${esc(l.nome)}</b><span class="mono">${rotulo(p)} · ${money(total(p))}</span></div><button class="btn sm" data-act="solicitar" data-id="${p.id}">Solicitado hoje</button></div>`; }).join('')}</div>`;
+  html += `<div class="h">Quanto cada local te deve</div>`;
+  html += porLocal.length ? porLocal.map(({l, itens}) => {
+    const at = itens.filter(r => r.prev && r.prev < HOJE), open = S.finOpen[l.id];
+    return `<div class="card" style="border-left:4px solid ${l.cor}">
+      <button class="loc-h" data-act="finToggle" data-id="${l.id}"><div class="g"><b>${esc(l.nome)}</b><div class="muted">${itens.length} em aberto${at.length ? ` · <span style="color:var(--ambar)">${at.length} atrasado${at.length > 1 ? 's' : ''}</span>` : ''}</div></div><div class="mono" style="font-weight:600;font-size:16px">${money(sm(itens))}</div>${ic(open ? 'up' : 'dn')}</button>
+      ${open ? `<div style="margin-top:8px">${sortBy(itens, r => r.prev || r.data || '').map(linha).join('')}</div>` : ''}
+      <div class="btns" style="margin-top:10px"><button class="btn sm p" data-act="pagarLocal" data-id="${l.id}">${ic('ok')}Marcar como pagos</button></div></div>`;
+  }).join('') : `<div class="vazio">Nada em aberto. Tudo recebido.</div>`;
+  const prevNaoAtr = sortBy(prevMes.filter(r => !(r.prev < HOJE)), r => r.prev);
+  html += `<div class="h">Previstos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(prevNaoAtr))}</span></div>` + (prevNaoAtr.length ? `<div class="card">${prevNaoAtr.map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento previsto para este mês.</div>`);
+  html += `<div class="h">Recebidos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(recMes, r => +r.valorPago || 0))}</span></div>` + (recMes.length ? `<div class="card">${sortBy(recMes, r => r.dataPago).map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento recebido neste mês.</div>`);
+  const semPrev = S.plantoes.filter(p => !p.pago && !p.prev && total(p) > 0);
+  if (semPrev.length) html += `<div class="h">Sem data de pagamento<span class="sub">${money(sm(semPrev))}</span></div><div class="card">${sortBy(semPrev, p => p.data).map(linha).join('')}</div>`;
+  return html;
+}
+
+/* =========================================================
+   RELATÓRIOS
+   ========================================================= */
+function periodoRel() {
+  const R = S.rel;
+  if (R.tipo === 'mes') return { de:`${R.mes}-01`, ate:`${R.mes}-31`, txt:`${nomeMes(R.mes)} de ${R.mes.slice(0,4)}` };
+  if (R.tipo === 'ano') return { de:`${R.ano}-01-01`, ate:`${R.ano}-12-31`, txt:`Ano de ${R.ano}` };
+  if (R.tipo === 'periodo') return { de:R.de, ate:R.ate, txt:`${ddmmaa(R.de)} a ${ddmmaa(R.ate)}` };
+  if (R.tipo === 'ciclo') return { ciclo:true, txt: R.ciclo ? `Ciclo pago em ${ddmmaa(R.ciclo)}` : 'Ciclo de pagamento' };
+  return { de:'0000-00-00', ate:'9999-99-99', txt:'Histórico completo' };
+}
+function dadosRel() {
+  const R = S.rel, P = periodoRel();
+  let ps, sals;
+  if (P.ciclo) {
+    ps = R.local && R.ciclo ? S.plantoes.filter(p => p.localId === R.local && p.prev === R.ciclo) : [];
+    sals = R.local && R.ciclo ? salarios().filter(s => s.localId === R.local && s.prev === R.ciclo) : [];
+  } else {
+    ps = S.plantoes.filter(p => p.data >= P.de && p.data <= P.ate && (!R.local || p.localId === R.local));
+    sals = salarios().filter(s => `${s.ref}-01` >= P.de.slice(0,7) + '-01' && `${s.ref}-01` <= P.ate && (!R.local || s.localId === R.local));
+  }
+  return { P, ps: sortBy(ps, p => p.data + p.inicio), sals };
+}
+function resumo(ps, sals) {
+  const all = [...ps, ...sals], sm = (a, f) => a.reduce((s, r) => s + f(r), 0);
+  const trab = sm(all, total), rec = sm(all.filter(r => r.pago), r => +r.valorPago || 0);
+  const ab = all.filter(r => !r.pago), atr = ab.filter(r => r.prev && r.prev < HOJE);
+  const min = sm(ps, dur);
+  return { trab, rec, aReceber: sm(ab, total), atrasado: sm(atr, total), nAtr: atr.length, n: ps.length, dias: new Set(ps.map(p => p.data)).size, min, vh: min ? trab / (min/60) : 0 };
+}
+function ciclosDoLocal(id) { return [...new Set([...S.plantoes.filter(p => p.localId === id && p.prev).map(p => p.prev), ...salarios().filter(s => s.localId === id).map(s => s.prev)])].sort().reverse(); }
+function chartMeses(ref, localId) {
+  const meses = Array.from({length:6}, (_, i) => addM(ref, i - 5));
+  const dados = meses.map(m => {
+    const ps = S.plantoes.filter(p => p.data.slice(0,7) === m && (!localId || p.localId === localId));
+    const ss = salarios().filter(s => s.ref === m && (!localId || s.localId === localId));
+    const all = [...ps, ...ss];
+    return { m, rec: all.filter(r => r.pago).reduce((s, r) => s + (+r.valorPago || 0), 0), pend: all.filter(r => !r.pago).reduce((s, r) => s + total(r), 0) };
+  });
+  const max = Math.max(1, ...dados.map(d => d.rec + d.pend));
+  const W = 600, H = 220, pl = 8, pb = 26, pt = 18, bw = 56, gap = (W - pl*2 - bw*6) / 5;
+  const sc = v => (v / max) * (H - pb - pt);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Recebido e a receber nos últimos 6 meses">`;
+  [0.5, 1].forEach(f => { const y = H - pb - (H - pb - pt) * f; s += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#ECE8DF"/>`; });
+  dados.forEach((d, i) => {
+    const x = pl + i*(bw + gap), hr = sc(d.rec), hp = sc(d.pend), y0 = H - pb;
+    s += `<rect x="${x}" y="${y0 - hr}" width="${bw}" height="${hr}" fill="#6B2BD6"/>`;
+    s += `<rect x="${x}" y="${y0 - hr - hp}" width="${bw}" height="${hp}" fill="#D9CCF6"/>`;
+    const t = d.rec + d.pend;
+    if (t) s += `<text x="${x + bw/2}" y="${y0 - hr - hp - 5}" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#17141F">${t >= 1000 ? (t/1000).toFixed(1).replace('.', ',') + 'k' : Math.round(t)}</text>`;
+    s += `<text x="${x + bw/2}" y="${H - 8}" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="14" fill="#5B5670">${MESC[+d.m.slice(5)-1].toUpperCase()}</text>`;
+  });
+  s += `<line x1="0" x2="${W}" y1="${H - pb}" y2="${H - pb}" stroke="#17141F"/></svg>`;
+  return s + `<div class="leg"><span><i style="background:#6B2BD6"></i>Recebido</span><span><i style="background:#D9CCF6"></i>A receber</span></div>`;
+}
+function chartLocais(linhas) {
+  if (!linhas.length) return '';
+  const max = Math.max(1, ...linhas.map(x => x.total)), W = 600, rh = 46, H = linhas.length * rh + 4, lw = 0;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Total por local">`;
+  linhas.forEach((x, i) => {
+    const y = i*rh + 4;
+    const w2 = Math.max(2, (x.total / max) * W);
+    s += `<text x="0" y="${y + 16}" font-family="Inter" font-size="20" fill="#17141F">${esc(x.l.nome)}</text><text x="${W}" y="${y + 16}" text-anchor="end" font-family="JetBrains Mono" font-size="19" fill="#17141F">${money(x.total)}</text>`;
+    s += `<rect x="0" y="${y + 24}" width="${w2}" height="14" fill="${x.l.cor}"/>`;
+  });
+  return s + '</svg>';
+}
+function linhasLocal(ps, sals) {
+  const ids = [...new Set([...ps, ...sals].map(r => r.localId))];
+  return sortBy(ids.map(id => {
+    const a = ps.filter(p => p.localId === id), b = sals.filter(s => s.localId === id), all = [...a, ...b];
+    const min = a.reduce((s, p) => s + dur(p), 0), t = all.reduce((s, r) => s + total(r), 0);
+    return { l: loc(id), n: a.length, min, total: t, vh: min ? t / (min/60) : 0, aberto: all.filter(r => !r.pago).reduce((s, r) => s + total(r), 0), atr: all.filter(r => !r.pago && r.prev && r.prev < HOJE).reduce((s, r) => s + total(r), 0) };
+  }), x => -x.total);
+}
+function vRel() {
+  const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
+  const locs = locaisOrd();
+  const seg = [['mes','Mês'],['ciclo','Ciclo'],['ano','Ano'],['periodo','Período'],['tudo','Tudo']].map(([v, t]) => `<button class="${R.tipo === v ? 'on' : ''}" data-act="relTipo" data-v="${v}">${t}</button>`).join('');
+  let campos = '';
+  if (R.tipo === 'mes') campos = `<label class="f" style="margin:0"><span>Mês</span><input class="in" type="month" data-rel="mes" value="${R.mes}"></label>`;
+  if (R.tipo === 'ano') { const anos = [...new Set([HOJE.slice(0,4), ...S.plantoes.map(p => p.data.slice(0,4))])].sort().reverse(); campos = `<label class="f" style="margin:0"><span>Ano</span><select class="in" data-rel="ano">${anos.map(a => `<option ${a === R.ano ? 'selected' : ''}>${a}</option>`).join('')}</select></label>`; }
+  if (R.tipo === 'periodo') campos = `<div class="row"><label class="f" style="margin:0"><span>De</span><input class="in" type="date" data-rel="de" value="${R.de}"></label><label class="f" style="margin:0"><span>Até</span><input class="in" type="date" data-rel="ate" value="${R.ate}"></label></div>`;
+  if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
+  const filtro = `<label class="f" style="margin:0"><span>Local</span><select class="in" data-rel="local"><option value="">${R.tipo === 'ciclo' ? 'Escolha…' : 'Todos os locais'}</option>${locs.map(l => `<option value="${l.id}" ${l.id === R.local ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>`;
+  let html = `<div class="top"><div class="titulo">Relatórios</div></div>
+    <div class="seg" style="margin-bottom:12px">${seg}</div>
+    <div class="relf">${filtro}${campos}</div>
+    <div class="h">${esc(P.txt)}</div>
+    <div class="mets">
+      <div class="met dest"><span>Total trabalhado</span><b>${money(z.trab)}</b><small>${z.n} ${z.n === 1 ? 'plantão' : 'plantões'}${sals.length ? ' + salário' : ''}</small></div>
+      <div class="met"><span>Recebido</span><b>${money(z.rec)}</b></div>
+      <div class="met"><span>A receber</span><b>${money(z.aReceber)}</b></div>
+      <div class="met ${z.atrasado ? 'alerta' : ''}"><span>Atrasado</span><b>${money(z.atrasado)}</b><small>${z.nAtr} pendente${z.nAtr === 1 ? '' : 's'}</small></div>
+      <div class="met"><span>Horas</span><b>${hh(z.min)}</b><small>${z.dias} dia${z.dias === 1 ? '' : 's'} trabalhado${z.dias === 1 ? '' : 's'}</small></div>
+      <div class="met"><span>Valor por hora</span><b>${money(z.vh)}</b></div>
+    </div>
+    <div class="btns" style="margin-top:12px"><button class="btn" data-act="pdf">${ic('dl')}PDF</button><button class="btn" data-act="csvRel">${ic('dl')}CSV</button></div>`;
+  const refMes = R.tipo === 'mes' ? R.mes : HOJE.slice(0,7);
+  html += `<div class="h">Últimos 6 meses</div><div class="card chart">${chartMeses(refMes, R.local)}</div>`;
+  if (linhas.length) {
+    html += `<div class="h">Por local</div><div class="card chart">${chartLocais(linhas)}</div>
+    <div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">R$/h</th><th class="r">Em aberto</th></tr></thead><tbody>
+    ${linhas.map(x => `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${x.l.cor};margin-right:6px"></span>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r" style="${x.atr ? 'color:var(--ambar)' : ''}">${money(x.aberto)}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  }
+  const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
+  if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
+  if (R.tipo === 'tudo' || R.tipo === 'ano') {
+    const meses = [...new Set([...ps.map(p => p.data.slice(0,7)), ...sals.map(s => s.ref)])].sort().reverse();
+    if (meses.length) html += `<div class="h">Histórico por mês</div><div class="card tbw"><table class="tb"><thead><tr><th>Mês</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Recebido</th><th class="r">Aberto</th></tr></thead><tbody>${meses.map(m => { const a = ps.filter(p => p.data.slice(0,7) === m), b = sals.filter(s => s.ref === m), q = resumo(a, b); return `<tr><td>${cap(mesCurto(m))}</td><td class="r">${q.n}</td><td class="r">${hh(q.min)}</td><td class="r">${money(q.trab)}</td><td class="r">${money(q.rec)}</td><td class="r">${money(q.aReceber)}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  if (ps.length) html += `<div class="h">Plantões<span class="sub">${ps.length}</span></div><div class="card tbw"><table class="tb"><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Valor</th><th>Status</th></tr></thead><tbody>${ps.map(p => `<tr><td class="mono">${ddmm(p.data)}</td><td class="wrap">${esc(loc(p.localId).nome)}${p.importante ? ' ★' : ''}</td><td class="mono">${p.inicio}–${p.fim}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${chipSt(status(p))}</td></tr>`).join('')}</tbody></table></div>`;
+  else html += `<div class="vazio" style="margin-top:16px">Nenhum plantão neste período.</div>`;
+  return html;
+}
+function gerarPDF() {
+  const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
+  const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
+  const lnome = R.local ? loc(R.local).nome : 'Todos os locais';
+  $('#print').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #6B2BD6;padding-bottom:6px">
+      <div><div class="pl">Plantonista</div><div style="font-family:var(--cond);font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:15px">Relatório de plantões · ${esc(P.txt)}</div></div>
+      <div style="text-align:right;font-size:11px;color:#5B5670">${esc(lnome)}<br>Usuário: ${esc(S.user)}<br>Gerado em ${ddmmaa(HOJE)}</div></div>
+    <h2>Resumo</h2><div class="pm">
+      <div><span>Total trabalhado</span><b>${money(z.trab)}</b></div><div><span>Recebido</span><b>${money(z.rec)}</b></div>
+      <div><span>A receber</span><b>${money(z.aReceber)}</b></div><div><span>Atrasado</span><b>${money(z.atrasado)}</b></div>
+      <div><span>Plantões</span><b>${z.n}</b></div><div><span>Dias</span><b>${z.dias}</b></div><div><span>Horas</span><b>${hh(z.min)}</b></div><div><span>Valor por hora</span><b>${money(z.vh)}</b></div></div>
+    ${linhas.length ? `<h2>Por local</h2><table><thead><tr><th>Local</th><th class="r">Plantões</th><th class="r">Horas</th><th class="r">Total</th><th class="r">R$/h</th><th class="r">Em aberto</th></tr></thead><tbody>${linhas.map(x => `<tr><td>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r">${money(x.aberto)}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${sals.length ? `<h2>Salários</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th>Status</th><th class="r">Valor</th></tr></thead><tbody>${sals.map(s => `<tr><td>${esc(loc(s.localId).nome)}</td><td>${mesCurto(s.ref)}</td><td>${ddmmaa(s.prev)}</td><td>${ST_TXT[status(s)]}${s.pago ? ' em ' + ddmmaa(s.dataPago) : ''}</td><td class="r">${money(s.pago ? s.valorPago : s.valor)}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${atr.length ? `<h2>Pagamentos atrasados</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td>${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data)}</td><td>${ddmmaa(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)} dias</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table>` : ''}
+    <h2>Plantões (${ps.length})</h2><table><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Horas</th><th class="r">Valor</th><th>Pagamento</th><th>Obs.</th></tr></thead><tbody>${ps.map(p => `<tr><td>${ddmmaa(p.data)} ${SEMC[dow(p.data)]}</td><td>${esc(loc(p.localId).nome)}</td><td>${p.inicio}–${p.fim}</td><td class="r">${hh(dur(p))}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—')}</td><td>${esc([p.extraDesc, p.nota].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
+  setTimeout(() => window.print(), 250);
+}
+
+/* =========================================================
+   AJUSTES
+   ========================================================= */
+function vAjustes() {
+  const locs = locaisOrd(), mods = sortBy(S.modelos, m => m.ordem ?? 0), L = S.cfg.lembretes;
+  const nst = pushState();
+  const nstTxt = { on:'Ativos neste aparelho.', off:'Desativados neste aparelho.', denied:'Bloqueados nas configurações do aparelho. Libere por lá.', 'ios-install':'No iPhone, funcionam só com o app instalado pelo Safari (Compartilhar > Adicionar à Tela de Início).', unsupported:'Este navegador não aceita notificações.' }[nst];
+  return `<div class="top"><div class="titulo">Ajustes</div></div>
+  <div class="h">Locais de trabalho<button class="btn sm p" data-act="novoLocal">${ic('plus')}Local</button></div>
+  <div class="card">${locs.length ? locs.map((l, i) => `<div class="li"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><button class="g" data-act="editLocal" data-id="${l.id}"><b>${esc(l.nome)}${l.arquivado ? ' <span class="st nota">Arquivado</span>' : ''}</b><span>${descLocal(l)}</span></button><div class="ord"><button data-act="ordL" data-id="${l.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordL" data-id="${l.id}" data-d="1" ${i === locs.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`).join('') : `<div class="muted">Nenhum local ainda.</div>`}</div>
+
+  <div class="h">Modelos de plantão<button class="btn sm p" data-act="novoModelo">${ic('plus')}Modelo</button></div>
+  <div class="card">${mods.length ? mods.map((m, i) => { const l = loc(m.localId); return `<div class="li"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><button class="g" data-act="editModelo" data-id="${m.id}"><b>${esc(m.nome)}</b><span class="mono">${esc(l.nome)} · ${m.inicio}–${m.fim} · ${money(m.valor)}</span></button><div class="ord"><button data-act="ordM" data-id="${m.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${ic('up')}</button><button data-act="ordM" data-id="${m.id}" data-d="1" ${i === mods.length - 1 ? 'disabled' : ''} aria-label="Descer">${ic('dn')}</button></div></div>`; }).join('') : `<div class="muted">Crie modelos (ex.: "UPA 12h diurno") para cadastrar plantões com um toque.</div>`}</div>
+
+  <div class="h">Lembretes</div>
+  <div class="card">
+    <div class="sw"><div class="t">Notificações neste aparelho<span class="muted">${nstTxt}</span>${S.pushErr ? `<span class="err" style="display:block;margin:4px 0 0">${esc(S.pushErr)}</span>` : ''}</div>${nst === 'on' ? `<button class="btn sm" data-act="pushOff">Desativar</button>` : (nst === 'off' ? `<button class="btn sm p" data-act="pushOn">Ativar</button>` : '')}</div>
+    <div class="sw"><div class="t">Lembretes ligados<span class="muted">Vale para todos os seus aparelhos.</span></div><span data-cfgL="ativo">${tg('lAtivo', L.ativo)}</span></div>
+    <div class="sw"><div class="t">Na véspera<span class="muted">Aviso dos plantões do dia seguinte. Deixe em branco para não avisar.</span></div><input class="in" type="time" style="width:120px" data-cfgl="vespera" value="${L.vespera || ''}"></div>
+    <div class="sw" style="display:block"><div class="t" style="margin-bottom:8px">Antes do início<span class="muted">Escolha uma ou mais antecedências.</span></div><div class="chips">${ANTES.map(([v, t]) => `<button class="chip ${(L.antes || []).includes(v) ? 'on' : ''}" data-act="antes" data-v="${v}">${t}</button>`).join('')}</div></div>
+    <div class="sw"><div class="t">Pagamentos previstos<span class="muted">Avisa no dia em que um pagamento está previsto.</span></div>${tg('lPag', L.pag)}</div>
+    <div class="sw"><div class="t">Horário dos avisos de pagamento</div><input class="in" type="time" style="width:120px" data-cfgl="pagHora" value="${L.pagHora || '09:00'}"></div>
+    <div class="sw"><div class="t">Resumo de atrasados</div><select class="in" style="width:150px" data-cfgl="atrasados"><option value="seg" ${L.atrasados === 'seg' ? 'selected' : ''}>Às segundas</option><option value="diario" ${L.atrasados === 'diario' ? 'selected' : ''}>Todo dia</option><option value="nao" ${L.atrasados === 'nao' ? 'selected' : ''}>Não avisar</option></select></div>
+    <div class="sw"><div class="t">Ver um exemplo<span class="muted">Mostra agora uma notificação de teste.</span></div><button class="btn sm" data-act="pushTeste">${ic('bell')}Testar</button></div>
+  </div>
+
+  <div class="h">Preferências</div>
+  <div class="card">
+    <div class="sw"><div class="t">Semana começa no</div><div class="seg" style="width:170px"><button class="${S.cfg.semana !== 'seg' ? 'on' : ''}" data-act="semana" data-v="dom">Domingo</button><button class="${S.cfg.semana === 'seg' ? 'on' : ''}" data-act="semana" data-v="seg">Segunda</button></div></div>
+    <div class="sw"><div class="t">Noturno em dois dias<span class="muted">Mostra o plantão que vira a noite também no dia seguinte.</span></div>${tg('noturno', S.cfg.noturnoDoisDias)}</div>
+    <div class="sw"><div class="t">Privacidade na agenda<span class="muted">Esconde valores e status de pagamento na tela inicial.</span></div>${tg('privacidade', S.cfg.privacidade)}</div>
+  </div>
+
+  <div class="h">Férias e folgas<button class="btn sm p" data-act="novaFer">${ic('plus')}Período</button></div>
+  <div class="card">${S.ferias.length ? sortBy(S.ferias, f => f.inicio).reverse().map(f => `<div class="li"><div class="g"><b>${esc(f.desc || 'Férias')}</b><span class="mono">${ddmmaa(f.inicio)} a ${ddmmaa(f.fim)}</span></div><button class="ib" data-act="editFer" data-id="${f.id}" aria-label="Editar">${ic('ed')}</button></div>`).join('') : `<div class="muted">Marque férias, folgas ou congressos para vê-los no calendário.</div>`}</div>
+
+  <div class="h">Dados</div>
+  <div class="card">
+    <div class="sw"><div class="t">Exportar plantões<span class="muted">Planilha CSV (abre no Excel e no Google Planilhas).</span></div><button class="btn sm" data-act="csvTudo">${ic('dl')}CSV</button></div>
+    <div class="sw"><div class="t">Importar plantões<span class="muted">CSV no mesmo formato da exportação.</span></div><button class="btn sm" data-act="csvImp">${ic('ul')}CSV</button></div>
+    <div class="sw"><div class="t">Backup completo<span class="muted">Locais, modelos, plantões, férias e ajustes.</span></div><button class="btn sm" data-act="bkp">${ic('dl')}Baixar</button></div>
+    <div class="sw"><div class="t">Restaurar backup</div><button class="btn sm" data-act="restaurar">${ic('ul')}Restaurar</button></div>
+  </div>
+
+  <div class="h">Conta</div>
+  <div class="card">
+    <div class="sw"><div class="t">Usuário<span class="muted mono">${esc(S.user)}</span></div><button class="btn sm" data-act="senha">Trocar senha</button></div>
+    <div class="sw"><div class="t">Sair deste aparelho</div><button class="btn sm d" data-act="sair">${ic('sair')}Sair</button></div>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:20px"><span style="font-family:var(--mao);color:var(--roxo);font-size:20px">Plantonista</span> · versão ${VERSAO}</p>
+  <input type="file" id="fileIn" class="hide">`;
+}
+function descLocal(l) {
+  if (l.tipo === 'salario') return `Salário mensal · ${money(l.salario)} · paga dia ${l.pagaDia || 5}${l.pagaMes === 'mesmo' ? '' : ' do mês seguinte'}`;
+  const r = l.regra === 'ciclo' && l.fecha && l.paga ? `fecha dia ${l.fecha}, paga dia ${l.paga}` : l.regra === 'dias' ? `paga ${l.dias || 0} dias após` : 'data de pagamento manual';
+  return `Por plantão · ${r}${l.precisaNota ? ' · emite nota' : ''}`;
+}
+
+/* =========================================================
+   FORMULÁRIOS
+   ========================================================= */
+function corPicker(cor) {
+  const padrao = CORES.some(c => c[0].toLowerCase() === (cor || '').toLowerCase());
+  return `<div class="cores">${CORES.map(([c, n]) => `<button type="button" class="cor ${c.toLowerCase() === (cor || '').toLowerCase() ? 'on' : ''}" style="--c:${c}" data-cor="${c}" aria-label="${n}"></button>`).join('')}<label class="cor custom ${!padrao && cor ? 'on' : ''}" aria-label="Cor personalizada"><input type="color" value="${cor || '#6B2BD6'}" data-cor-custom></label></div><input type="hidden" name="cor" value="${cor || CORES[0][0]}">`;
+}
+function bindCor(b) {
+  b.addEventListener('click', e => { const x = e.target.closest('[data-cor]'); if (!x) return; b.querySelectorAll('.cor').forEach(c => c.classList.remove('on')); x.classList.add('on'); b.querySelector('[name=cor]').value = x.dataset.cor; });
+  const cc = b.querySelector('[data-cor-custom]');
+  if (cc) cc.addEventListener('input', () => { b.querySelectorAll('.cor').forEach(c => c.classList.remove('on')); cc.parentElement.classList.add('on'); b.querySelector('[name=cor]').value = cc.value; });
+}
+
+/* ---------- Local ---------- */
+function formLocal(id) {
+  const l = id ? S.locais.find(x => x.id === id) : { id: uid(), nome:'', sigla:'', cor: CORES[S.locais.length % CORES.length][0], tipo:'plantao', regra:'ciclo', fecha:'', paga:'', dias:30, precisaNota:false, salario:'', pagaDia:5, pagaMes:'seguinte', inicioSal: HOJE.slice(0,7), ordem: S.locais.length };
+  const novo = !id;
+  const b = openSheet(novo ? 'Novo local' : 'Editar local', `<form id="fl">
+    <label class="f"><span>Nome do local</span><input class="in" name="nome" value="${esc(l.nome)}" required placeholder="UPA Três Rios"></label>
+    <div class="row"><label class="f"><span>Sigla no calendário</span><input class="in" name="sigla" value="${esc(l.sigla || '')}" maxlength="7" placeholder="UPA"></label><div></div></div>
+    <label class="f"><span>Cor</span>${corPicker(l.cor)}</label>
+    <label class="f"><span>Forma de pagamento</span><div class="seg"><button type="button" data-tipo="plantao" class="${l.tipo !== 'salario' ? 'on' : ''}">Por plantão</button><button type="button" data-tipo="salario" class="${l.tipo === 'salario' ? 'on' : ''}">Salário mensal</button></div></label>
+    <input type="hidden" name="tipo" value="${l.tipo || 'plantao'}">
+    <div data-box="plantao" class="${l.tipo === 'salario' ? 'hide' : ''}">
+      <label class="f"><span>Data de pagamento automática</span><select class="in" name="regra">
+        <option value="ciclo" ${l.regra === 'ciclo' ? 'selected' : ''}>Fecha em um dia e paga em outro</option>
+        <option value="dias" ${l.regra === 'dias' ? 'selected' : ''}>Paga X dias após o plantão</option>
+        <option value="manual" ${l.regra === 'manual' || !l.regra ? 'selected' : ''}>Informo manualmente</option></select></label>
+      <div class="row" data-r="ciclo"><label class="f"><span>Fecha no dia</span><input class="in mono" name="fecha" type="number" min="1" max="31" inputmode="numeric" value="${l.fecha || ''}" placeholder="20"></label><label class="f"><span>Paga no dia</span><input class="in mono" name="paga" type="number" min="1" max="31" inputmode="numeric" value="${l.paga || ''}" placeholder="28"></label></div>
+      <div class="row" data-r="dias"><label class="f"><span>Dias após o plantão</span><input class="in mono" name="dias" type="number" min="0" max="365" inputmode="numeric" value="${l.dias ?? 30}"></label><div></div></div>
+      <div class="dica" data-r="ciclo" style="font-size:13px">Exemplo: "fecha dia 20, paga dia 28" → plantão do dia 15 é pago no dia 28 do mesmo mês; plantão do dia 22 é pago no dia 28 do mês seguinte.</div>
+      <div class="sw"><div class="t">Precisa emitir nota<span class="muted">Mostra um lembrete para marcar quando você solicitou o pagamento.</span></div>${tg('precisaNota', l.precisaNota)}</div>
+    </div>
+    <div data-box="salario" class="${l.tipo === 'salario' ? '' : 'hide'}">
+      <label class="f"><span>Valor do salário</span><input class="in mono" name="salario" inputmode="decimal" value="${l.salario ? String(l.salario).replace('.', ',') : ''}" placeholder="0,00"></label>
+      <div class="row"><label class="f"><span>Paga no dia</span><input class="in mono" name="pagaDia" type="number" min="1" max="31" value="${l.pagaDia || 5}"></label>
+      <label class="f"><span>Do mês</span><select class="in" name="pagaMes"><option value="seguinte" ${l.pagaMes !== 'mesmo' ? 'selected' : ''}>Seguinte</option><option value="mesmo" ${l.pagaMes === 'mesmo' ? 'selected' : ''}>Trabalhado</option></select></label></div>
+      <div class="row"><label class="f"><span>Começou em</span><input class="in" type="month" name="inicioSal" value="${l.inicioSal || HOJE.slice(0,7)}"></label><label class="f"><span>Terminou em</span><input class="in" type="month" name="fimSal" value="${l.fimSal || ''}"></label></div>
+      <div class="muted" style="margin:-4px 0 12px">Os plantões deste local contam horas; o valor recebido é o salário.</div>
+    </div>
+    ${!novo ? `<div class="sw"><div class="t">Arquivar<span class="muted">Some da agenda e dos filtros, mas mantém o histórico.</span></div>${tg('arquivado', l.arquivado)}</div>` : ''}
+    <div class="btns" style="margin-top:14px"><button class="btn p w" type="submit">Salvar</button></div>
+    ${!novo ? `<div class="btns" style="margin-top:8px"><button class="btn d w" type="button" data-act2="delLocal">${ic('lixo')}Excluir local</button></div>` : ''}
+  </form>`);
+  bindCor(b);
+  const f = b.querySelector('#fl');
+  const regraUI = () => { const r = f.regra.value; b.querySelectorAll('[data-r]').forEach(x => x.classList.toggle('hide', x.dataset.r !== r)); };
+  regraUI(); f.regra.onchange = regraUI;
+  b.querySelectorAll('[data-tipo]').forEach(x => x.onclick = () => { b.querySelectorAll('[data-tipo]').forEach(y => y.classList.toggle('on', y === x)); f.tipo.value = x.dataset.tipo; b.querySelectorAll('[data-box]').forEach(y => y.classList.toggle('hide', y.dataset.box !== x.dataset.tipo)); });
+  const del2 = b.querySelector('[data-act2=delLocal]');
+  if (del2) del2.onclick = async () => {
+    const n = S.plantoes.filter(p => p.localId === l.id).length;
+    if (n) { const r = await confirmar('Excluir local', `Este local tem <b>${n} plantões</b>. Excluir apaga todos eles. Se quiser manter o histórico, use <b>Arquivar</b>.`, [{t:'Excluir local e plantões', v:1, cls:'d'}]); if (!r) return; await putMany([...S.plantoes.filter(p => p.localId === l.id).map(p => ({col:'plantoes', id:p.id, del:true})), ...S.modelos.filter(m => m.localId === l.id).map(m => ({col:'modelos', id:m.id, del:true})), {col:'locais', id:l.id, del:true}]); }
+    else { const r = await confirmar('Excluir local', `Excluir <b>${esc(l.nome)}</b>?`, [{t:'Excluir', v:1, cls:'d'}]); if (!r) return; await putMany([...S.modelos.filter(m => m.localId === l.id).map(m => ({col:'modelos', id:m.id, del:true})), {col:'locais', id:l.id, del:true}]); }
+    toast('Local excluído');
+  };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const antes = { ...l };
+    const o = { ...l, nome: f.nome.value.trim(), sigla: f.sigla.value.trim(), cor: f.cor.value, tipo: f.tipo.value };
+    if (o.tipo === 'plantao') { Object.assign(o, { regra: f.regra.value, fecha: +f.fecha.value || '', paga: +f.paga.value || '', dias: +f.dias.value || 0, precisaNota: f.precisaNota.checked }); if (o.regra === 'ciclo' && (!o.fecha || !o.paga)) return toast('Informe o dia que fecha e o dia que paga.'); }
+    else Object.assign(o, { salario: num(f.salario.value), pagaDia: +f.pagaDia.value || 5, pagaMes: f.pagaMes.value, inicioSal: f.inicioSal.value, fimSal: f.fimSal.value || '' });
+    if (f.arquivado) o.arquivado = f.arquivado.checked;
+    if (!o.nome) return;
+    closeSheet();
+    await put('locais', o);
+    toast(novo ? 'Local criado' : 'Local salvo');
+    const mudouRegra = !novo && o.tipo === 'plantao' && ['regra','fecha','paga','dias','tipo'].some(k => antes[k] !== o[k]);
+    const abertos = S.plantoes.filter(p => p.localId === o.id && !p.pago);
+    if (mudouRegra && abertos.length) {
+      const r = await confirmar('Recalcular datas?', `A regra de pagamento mudou. Recalcular a data prevista dos <b>${abertos.length} plantões</b> ainda não pagos deste local?`, [{t:'Recalcular', v:1, cls:'p'}]);
+      if (r) { await putMany(abertos.map(p => ({ col:'plantoes', obj:{ ...p, prev: prevPag(o, p.data) } }))); toast('Datas recalculadas'); }
+    }
+    if (novo && !S.modelos.length) setTimeout(() => toast('Agora crie um modelo de plantão', 'Criar', () => formModelo(null, o.id)), 400);
+  };
+}
+
+/* ---------- Modelo ---------- */
+function formModelo(id, localPre) {
+  if (!S.locais.length) { toast('Cadastre um local primeiro'); return formLocal(); }
+  const m = id ? S.modelos.find(x => x.id === id) : { id: uid(), nome:'', localId: localPre || locaisAtivos()[0]?.id, inicio:'07:00', fim:'19:00', valor:'', nota:'', ordem: S.modelos.length };
+  const novo = !id;
+  const b = openSheet(novo ? 'Novo modelo' : 'Editar modelo', `<form id="fm">
+    <label class="f"><span>Local</span><select class="in" name="localId">${locaisAtivos().map(l => `<option value="${l.id}" ${l.id === m.localId ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>
+    <label class="f"><span>Nome do modelo</span><input class="in" name="nome" value="${esc(m.nome)}" placeholder="UPA 12h diurno"></label>
+    <div class="row"><label class="f"><span>Início</span><input class="in" type="time" name="inicio" value="${m.inicio}" required></label><label class="f"><span>Fim</span><input class="in" type="time" name="fim" value="${m.fim}" required></label></div>
+    <div class="muted" data-dur style="margin:-4px 0 12px"></div>
+    <label class="f"><span>Valor</span><input class="in mono" name="valor" inputmode="decimal" value="${m.valor ? String(m.valor).replace('.', ',') : ''}" placeholder="0,00"></label>
+    <label class="f"><span>Observação padrão</span><input class="in" name="nota" value="${esc(m.nota || '')}"></label>
+    <div class="btns"><button class="btn p w" type="submit">Salvar</button></div>
+    ${!novo ? `<div class="btns" style="margin-top:8px"><button class="btn d w" type="button" data-act2="delMod">${ic('lixo')}Excluir modelo</button></div>` : ''}
+  </form>`);
+  const f = b.querySelector('#fm');
+  const du = () => { const d = dur({ inicio:f.inicio.value, fim:f.fim.value }); b.querySelector('[data-dur]').textContent = d ? `Duração: ${hh(d)}${tm(f.fim.value) <= tm(f.inicio.value) ? ' (termina no dia seguinte)' : ''}` : ''; };
+  f.inicio.oninput = f.fim.oninput = du; du();
+  const d2 = b.querySelector('[data-act2=delMod]');
+  if (d2) d2.onclick = async () => { closeSheet(); await del('modelos', m.id); toast('Modelo excluído'); };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const l = loc(f.localId.value);
+    const o = { ...m, localId: f.localId.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), nota: f.nota.value.trim() };
+    o.nome = f.nome.value.trim() || `${sigla(l)} ${hh(dur(o))} ${tm(o.inicio) >= 18*60 || tm(o.inicio) < 5*60 ? 'noturno' : 'diurno'}`;
+    closeSheet(); await put('modelos', o); toast(novo ? 'Modelo criado' : 'Modelo salvo');
+  };
+}
+
+/* ---------- Plantão ---------- */
+function gerarDatas(base, rep) {
+  if (!rep || rep.tipo === 'nao') return [base];
+  if (rep.tipo === 'datas') return [...new Set(rep.datas)].sort();
+  const out = [], limite = rep.ate || addD(base, 365), vezes = +rep.vezes || 0;
+  const dias = rep.dias && rep.dias.length ? rep.dias : [dow(base)];
+  const w0 = addD(base, -dow(base));
+  for (let i = 0; i < 400; i++) {
+    const d = addD(base, i);
+    if (d > limite || (vezes && out.length >= vezes) || out.length >= 366) break;
+    let ok = false;
+    if (rep.tipo === 'diaria') ok = true;
+    else if (rep.tipo === 'semanal') ok = dias.includes(dow(d));
+    else if (rep.tipo === 'quinzenal') ok = dias.includes(dow(d)) && Math.floor(diffD(d, w0) / 7) % 2 === 0;
+    else if (rep.tipo === 'ndias') ok = i % Math.max(1, +rep.n || 1) === 0;
+    if (ok) out.push(d);
+  }
+  return out;
+}
+function novoDeModelo(m, data) {
+  const l = loc(m.localId);
+  return { id: uid(), localId: m.localId, data, inicio: m.inicio, fim: m.fim, valor: +m.valor || 0, extra: 0, extraDesc:'', nota: m.nota || '', importante:false, semLembrete:false, pago:false, valorPago:0, dataPago:'', prev: prevPag(l, data), notaSolicitada:'', modeloId: m.id };
+}
+function formPlantao(id, preset = {}) {
+  if (!S.locais.length) { toast('Cadastre um local primeiro'); return formLocal(); }
+  const ex = id ? S.plantoes.find(x => x.id === id) : null;
+  if (id && !ex) return;
+  const novo = !ex;
+  const p = ex ? { ...ex } : Object.assign({ id: uid(), localId: locaisAtivos()[0]?.id || S.locais[0].id, data: S.sel || HOJE, inicio:'07:00', fim:'19:00', valor:'', extra:'', extraDesc:'', nota:'', importante:false, semLembrete:false, pago:false, valorPago:0, dataPago:'', prev:'', notaSolicitada:'' }, preset);
+  if (novo && !p.prev) p.prev = prevPag(loc(p.localId), p.data);
+  const mods = sortBy(S.modelos, m => m.ordem ?? 0);
+  const listaLocais = sortBy(S.locais.filter(l => !l.arquivado || l.id === p.localId), l => l.ordem ?? 0);
+  const v = x => x ? String(x).replace('.', ',') : '';
+  const b = openSheet(novo ? 'Novo plantão' : 'Editar plantão', `<form id="fp">
+    ${novo && mods.length ? `<div class="chips" style="margin-bottom:14px">${mods.map(m => `<button type="button" class="chip" style="--c:${loc(m.localId).cor}" data-mod="${m.id}"><span class="dot"></span>${esc(m.nome)}</button>`).join('')}</div>` : ''}
+    <label class="f"><span>Local</span><select class="in" name="localId">${listaLocais.map(l => `<option value="${l.id}" ${l.id === p.localId ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>
+    <label class="f"><span>Data</span><input class="in" type="date" name="data" value="${p.data}" required></label>
+    <div class="row"><label class="f"><span>Início</span><input class="in" type="time" name="inicio" value="${p.inicio}" required></label><label class="f"><span>Fim</span><input class="in" type="time" name="fim" value="${p.fim}" required></label></div>
+    <div class="muted" data-dur style="margin:-4px 0 12px"></div>
+    <div class="row"><label class="f"><span>Valor</span><input class="in mono" name="valor" inputmode="decimal" value="${v(p.valor)}" placeholder="0,00"></label><label class="f"><span>Adicional</span><input class="in mono" name="extra" inputmode="decimal" value="${v(p.extra)}" placeholder="0,00"></label></div>
+    <label class="f" data-extra-desc><span>Descrição do adicional</span><input class="in" name="extraDesc" value="${esc(p.extraDesc || '')}" placeholder="Hora extra, produtividade…"></label>
+    <div class="row"><label class="f"><span>Pagamento previsto</span><input class="in" type="date" name="prev" value="${p.prev || ''}"></label>
+    <label class="f" data-nota-sol><span>Pagamento solicitado</span><input class="in" type="date" name="notaSolicitada" value="${p.notaSolicitada || ''}"></label></div>
+    <label class="f"><span>Observação</span><textarea class="in" name="nota" rows="2">${esc(p.nota || '')}</textarea></label>
+    <div class="card" style="padding:4px 14px;margin-bottom:12px">
+      <div class="sw"><div class="t">★ Importante</div>${tg('importante', p.importante)}</div>
+      <div class="sw"><div class="t">Sem lembrete<span class="muted">Não avisar sobre este plantão.</span></div>${tg('semLembrete', p.semLembrete)}</div>
+      ${!novo ? `<div class="sw"><div class="t">Pago${p.pago ? `<span class="muted">${money(p.valorPago)} em ${ddmmaa(p.dataPago)}</span>` : ''}</div>${tg('pago', p.pago)}</div>
+      <div data-pago-box class="${p.pago ? '' : 'hide'}"><div class="row" style="padding-bottom:10px"><label class="f" style="margin:0"><span>Valor recebido</span><input class="in mono" name="valorPago" inputmode="decimal" value="${v(p.pago ? p.valorPago : total(p))}"></label><label class="f" style="margin:0"><span>Data</span><input class="in" type="date" name="dataPago" value="${p.dataPago || HOJE}"></label></div></div>` : ''}
+    </div>
+    ${novo ? `<label class="f"><span>Repetir</span><select class="in" name="rep">
+      <option value="nao">Não repete</option><option value="semanal">Semanal</option><option value="quinzenal">Quinzenal</option><option value="diaria">Todo dia</option><option value="ndias">A cada X dias</option><option value="datas">Escolher os dias no mês</option></select></label>
+      <div data-rep="semanal quinzenal" class="hide"><div class="chips" style="margin-bottom:12px">${SEMC.map((s, i) => `<button type="button" class="chip" data-wd="${i}">${s}</button>`).join('')}</div></div>
+      <div data-rep="ndias" class="hide"><label class="f"><span>A cada quantos dias</span><input class="in mono" name="repN" type="number" min="1" value="2"></label></div>
+      <div data-rep="datas" class="hide"><div class="mini-cal" data-minical style="margin-bottom:12px"></div></div>
+      <div data-rep="semanal quinzenal diaria ndias" class="hide"><div class="row"><label class="f"><span>Até</span><input class="in" type="date" name="repAte" value="${addD(p.data, 30)}"></label><label class="f"><span>Ou nº de vezes</span><input class="in mono" name="repVezes" type="number" min="1" placeholder="—"></label></div></div>
+      <div class="muted" data-rep-txt style="margin:-4px 0 12px"></div>` : ''}
+    <div class="btns"><button class="btn p w" type="submit">Salvar</button></div>
+    ${!novo ? `<div class="btns" style="margin-top:8px"><button class="btn w" type="button" data-act2="dup">${ic('copy')}Duplicar</button><button class="btn d w" type="button" data-act2="delP">${ic('lixo')}Excluir</button></div>` : ''}
+  </form>`);
+  const f = b.querySelector('#fp');
+  let prevManual = !novo && p.prev && p.prev !== prevPag(loc(p.localId), p.data);
+  const ui = () => {
+    const d = dur({ inicio:f.inicio.value, fim:f.fim.value });
+    b.querySelector('[data-dur]').textContent = d ? `Duração: ${hh(d)}${tm(f.fim.value) <= tm(f.inicio.value) ? ' (termina no dia seguinte)' : ''}` : '';
+    const l = loc(f.localId.value);
+    b.querySelector('[data-nota-sol]').classList.toggle('hide', !l.precisaNota);
+    b.querySelector('[data-extra-desc]').classList.toggle('hide', !num(f.extra.value));
+  };
+  const recalc = () => { if (!prevManual) f.prev.value = prevPag(loc(f.localId.value), f.data.value); };
+  f.localId.onchange = () => { recalc(); ui(); };
+  f.data.onchange = () => { recalc(); if (f.rep && f.rep.value === 'datas') datas = [f.data.value]; renderMini(); repTxt(); };
+  f.prev.oninput = () => { prevManual = true; };
+  f.inicio.oninput = f.fim.oninput = f.extra.oninput = ui; ui();
+  b.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { const m = S.modelos.find(y => y.id === x.dataset.mod); f.localId.value = m.localId; f.inicio.value = m.inicio; f.fim.value = m.fim; f.valor.value = v(m.valor); if (m.nota) f.nota.value = m.nota; b.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); recalc(); ui(); });
+  if (f.pago) f.pago.onchange = () => { b.querySelector('[data-pago-box]').classList.toggle('hide', !f.pago.checked); if (f.pago.checked && !num(f.valorPago.value)) f.valorPago.value = v(num(f.valor.value) + num(f.extra.value)); };
+  // Repetição
+  let wds = [], datas = [p.data];
+  const renderMini = () => {
+    const box = b.querySelector('[data-minical]'); if (!box) return;
+    const ym = f.data.value.slice(0, 7), ws = S.cfg.semana === 'seg' ? 1 : 0, off = (dow(`${ym}-01`) - ws + 7) % 7, nd = new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();
+    box.innerHTML = Array.from({length:7}, (_, i) => `<span>${SEMC[(i + ws) % 7]}</span>`).join('') + '<i></i>'.repeat(off) + Array.from({length:nd}, (_, i) => { const d = `${ym}-${p2(i+1)}`; return `<button type="button" data-dd="${d}" class="${datas.includes(d) ? 'on' : ''}">${i+1}</button>`; }).join('');
+  };
+  const repTxt = () => { const t = b.querySelector('[data-rep-txt]'); if (!t) return; const r = lerRep(); t.textContent = r.tipo === 'nao' ? '' : `Serão criados ${gerarDatas(f.data.value, r).length} plantões.`; };
+  const lerRep = () => f.rep ? { tipo: f.rep.value, dias: wds, n: +f.repN.value, ate: f.repAte.value, vezes: +f.repVezes.value || 0, datas } : null;
+  if (f.rep) {
+    f.rep.onchange = () => { const t = f.rep.value; b.querySelectorAll('[data-rep]').forEach(x => x.classList.toggle('hide', !x.dataset.rep.split(' ').includes(t))); if ((t === 'semanal' || t === 'quinzenal') && !wds.length) { wds = [dow(f.data.value)]; b.querySelectorAll('[data-wd]').forEach(x => x.classList.toggle('on', wds.includes(+x.dataset.wd))); } if (t === 'datas') { datas = [f.data.value]; renderMini(); } repTxt(); };
+    b.querySelectorAll('[data-wd]').forEach(x => x.onclick = () => { const w = +x.dataset.wd; wds = wds.includes(w) ? wds.filter(y => y !== w) : [...wds, w]; x.classList.toggle('on'); repTxt(); });
+    b.querySelector('[data-minical]').addEventListener('click', e => { const x = e.target.closest('[data-dd]'); if (!x) return; const d = x.dataset.dd; datas = datas.includes(d) ? datas.filter(y => y !== d) : [...datas, d]; x.classList.toggle('on'); repTxt(); });
+    f.repN.oninput = f.repAte.oninput = f.repVezes.oninput = repTxt;
+  }
+  const dup = b.querySelector('[data-act2=dup]');
+  if (dup) dup.onclick = () => { closeSheet(); formPlantao(null, { localId:p.localId, inicio:p.inicio, fim:p.fim, valor:p.valor, extra:p.extra, extraDesc:p.extraDesc, nota:p.nota, data: addD(p.data, 1) }); };
+  const dl = b.querySelector('[data-act2=delP]');
+  if (dl) dl.onclick = async () => {
+    let escopo = 'este';
+    const serie = p.serieId ? S.plantoes.filter(x => x.serieId === p.serieId && x.data >= p.data && !x.pago) : [];
+    if (serie.length > 1) { escopo = await confirmar('Excluir plantão', 'Este plantão faz parte de uma repetição.', [{t:'Só este', v:'este', cls:'d'}, {t:`Este e os próximos (${serie.length})`, v:'prox', cls:'d'}]); if (!escopo) return; }
+    else { const r = await confirmar('Excluir plantão', `Excluir o plantão de <b>${ddmmaa(p.data)}</b> em <b>${esc(loc(p.localId).nome)}</b>?`, [{t:'Excluir', v:1, cls:'d'}]); if (!r) return; }
+    closeSheet();
+    const alvo = escopo === 'prox' ? serie : [p];
+    const backup = alvo.map(x => ({ ...x }));
+    await putMany(alvo.map(x => ({ col:'plantoes', id:x.id, del:true })));
+    toast(alvo.length > 1 ? `${alvo.length} plantões excluídos` : 'Plantão excluído', 'Desfazer', () => putMany(backup.map(x => ({ col:'plantoes', obj:x }))));
+  };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const o = { ...p, localId: f.localId.value, data: f.data.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), extra: num(f.extra.value), extraDesc: num(f.extra.value) ? f.extraDesc.value.trim() : '', prev: f.prev.value || '', notaSolicitada: f.notaSolicitada.value || '', nota: f.nota.value.trim(), importante: f.importante.checked, semLembrete: f.semLembrete.checked };
+    if (f.pago) { o.pago = f.pago.checked; o.valorPago = o.pago ? num(f.valorPago.value) : 0; o.dataPago = o.pago ? (f.dataPago.value || HOJE) : ''; }
+    if (novo) {
+      const rep = lerRep(), ds = gerarDatas(o.data, rep);
+      if (!ds.length) return toast('Escolha pelo menos um dia.');
+      const serieId = ds.length > 1 ? uid() : '';
+      const l = loc(o.localId);
+      const itens = ds.map((d, i) => ({ ...o, id: i === 0 ? o.id : uid(), data: d, serieId, prev: d === o.data && prevManual ? o.prev : prevPag(l, d) }));
+      closeSheet();
+      await putMany(itens.map(x => ({ col:'plantoes', obj:x })));
+      S.sel = o.data; S.mes = o.data.slice(0, 7);
+      toast(itens.length > 1 ? `${itens.length} plantões criados` : 'Plantão criado', 'Desfazer', () => putMany(itens.map(x => ({ col:'plantoes', id:x.id, del:true }))));
+      return;
+    }
+    const serie = p.serieId ? S.plantoes.filter(x => x.serieId === p.serieId && x.data > p.data && !x.pago) : [];
+    const campos = ['localId','inicio','fim','valor','extra','extraDesc','nota','importante','semLembrete'];
+    const mudou = campos.filter(k => o[k] !== p[k]);
+    let escopo = 'este';
+    if (serie.length && mudou.length) { escopo = await confirmar('Aplicar alteração', 'Este plantão faz parte de uma repetição.', [{t:'Só este', v:'este', cls:'p'}, {t:`Este e os próximos (${serie.length + 1})`, v:'prox'}]); if (!escopo) return; }
+    closeSheet();
+    const ops = [{ col:'plantoes', obj:o }];
+    if (escopo === 'prox') serie.forEach(x => { const n = { ...x }; mudou.forEach(k => n[k] = o[k]); if (mudou.includes('localId')) n.prev = prevPag(loc(n.localId), n.data); ops.push({ col:'plantoes', obj:n }); });
+    await putMany(ops);
+    toast('Plantão salvo');
+  };
+}
+
+/* ---------- Pagamento ---------- */
+function achaRec(id) { return recebiveis().find(r => r.id === id); }
+function formPagar(id) {
+  const r = achaRec(id); if (!r) return;
+  const l = loc(r.localId);
+  const b = openSheet('Marcar como pago', `<form id="fpg">
+    <div class="ln" style="--c:${l.cor};margin-bottom:12px"><span class="dot"></span><div class="g"><b>${esc(l.nome)}</b><span class="mono">${rotulo(r)}</span></div><div class="v">${money(total(r))}</div></div>
+    <div class="row"><label class="f"><span>Valor recebido</span><input class="in mono" name="valor" inputmode="decimal" value="${String(total(r)).replace('.', ',')}"></label><label class="f"><span>Data</span><input class="in" type="date" name="data" value="${HOJE}"></label></div>
+    <button class="btn p w" type="submit">${ic('ok')}Confirmar pagamento</button>
+  </form>`);
+  const f = b.querySelector('#fpg');
+  f.onsubmit = async e => { e.preventDefault(); closeSheet(); await pagar([r], num(f.valor.value), f.data.value || HOJE); toast('Pagamento registrado', 'Desfazer', () => despagar([achaRec(r.id)])); };
+}
+async function pagar(lista, valorTotal, data) {
+  const soma = lista.reduce((s, r) => s + total(r), 0);
+  const fator = soma ? valorTotal / soma : 0;
+  const ops = [], salPorLocal = {};
+  lista.forEach((r, i) => {
+    let vp = lista.length === 1 ? valorTotal : Math.round(total(r) * fator * 100) / 100;
+    if (lista.length > 1 && i === lista.length - 1) vp = Math.round((valorTotal - ops.reduce((s, o) => s + (o.vp || 0), 0) - Object.values(salPorLocal).flat().reduce((s, x) => s + x.vp, 0)) * 100) / 100;
+    if (r.sal) (salPorLocal[r.localId] ||= []).push({ ref: r.ref, vp });
+    else { const p = S.plantoes.find(x => x.id === r.id); ops.push({ col:'plantoes', obj:{ ...p, pago:true, valorPago:vp, dataPago:data }, vp }); }
+  });
+  Object.entries(salPorLocal).forEach(([lid, xs]) => { const l = S.locais.find(x => x.id === lid); const pagos = { ...(l.pagos || {}) }; xs.forEach(x => pagos[x.ref] = { valor:x.vp, data }); ops.push({ col:'locais', obj:{ ...l, pagos } }); });
+  await putMany(ops.map(({ col, obj }) => ({ col, obj })));
+}
+async function despagar(lista) {
+  const ops = [], salPorLocal = {};
+  lista.filter(Boolean).forEach(r => {
+    if (r.sal) (salPorLocal[r.localId] ||= []).push(r.ref);
+    else { const p = S.plantoes.find(x => x.id === r.id); ops.push({ col:'plantoes', obj:{ ...p, pago:false, valorPago:0, dataPago:'' } }); }
+  });
+  Object.entries(salPorLocal).forEach(([lid, refs]) => { const l = S.locais.find(x => x.id === lid); const pagos = { ...(l.pagos || {}) }; refs.forEach(k => delete pagos[k]); ops.push({ col:'locais', obj:{ ...l, pagos } }); });
+  await putMany(ops);
+}
+function formPagarLocal(lid) {
+  const l = loc(lid);
+  const abertos = sortBy(recebiveis().filter(r => r.localId === lid && !r.pago && total(r) > 0), r => r.prev || r.data || '');
+  if (!abertos.length) return toast('Nada em aberto neste local.');
+  const sel = new Set(abertos.filter(r => !r.prev || r.prev <= HOJE).map(r => r.id));
+  if (!sel.size) abertos.forEach(r => sel.add(r.id));
+  const b = openSheet(`Pagos · ${l.nome}`, `<form id="fpl">
+    <div class="chips" style="margin-bottom:10px"><button type="button" class="chip" data-q="atr">Atrasados</button><button type="button" class="chip" data-q="hoje">Previstos até hoje</button><button type="button" class="chip" data-q="todos">Todos</button><button type="button" class="chip" data-q="nenhum">Nenhum</button></div>
+    <div class="paylist">${abertos.map(r => `<label><input type="checkbox" value="${r.id}" ${sel.has(r.id) ? 'checked' : ''}><span><span class="mono">${rotulo(r)}</span><br><span class="muted">${r.prev ? (r.prev < HOJE ? '<span style="color:var(--ambar)">atrasado</span> · ' : '') + 'previsto ' + ddmm(r.prev) : 'sem data prevista'}</span></span><span class="mono">${money(total(r))}</span></label>`).join('')}</div>
+    <div class="row"><label class="f"><span>Valor recebido</span><input class="in mono" name="valor" inputmode="decimal"></label><label class="f"><span>Data</span><input class="in" type="date" name="data" value="${HOJE}"></label></div>
+    <div class="muted" data-info style="margin:-4px 0 12px"></div>
+    <button class="btn p w" type="submit">${ic('ok')}Confirmar</button>
+  </form>`);
+  const f = b.querySelector('#fpl'), cbs = [...b.querySelectorAll('.paylist input')];
+  let editado = false;
+  const atual = () => abertos.filter(r => cbs.find(c => c.value === r.id).checked);
+  const upd = () => { const a = atual(), s = a.reduce((x, r) => x + total(r), 0); if (!editado) f.valor.value = String(s.toFixed(2)).replace('.', ','); b.querySelector('[data-info]').textContent = `${a.length} selecionado${a.length === 1 ? '' : 's'} · esperado ${money(s)}`; };
+  cbs.forEach(c => c.onchange = upd);
+  f.valor.oninput = () => editado = true;
+  b.querySelectorAll('[data-q]').forEach(x => x.onclick = () => { const q = x.dataset.q; cbs.forEach(c => { const r = abertos.find(y => y.id === c.value); c.checked = q === 'todos' || (q === 'atr' && r.prev && r.prev < HOJE) || (q === 'hoje' && (!r.prev || r.prev <= HOJE)); }); editado = false; upd(); });
+  upd();
+  f.onsubmit = async e => {
+    e.preventDefault(); const a = atual(); if (!a.length) return toast('Selecione pelo menos um.');
+    closeSheet(); await pagar(a, num(f.valor.value), f.data.value || HOJE);
+    toast(`${a.length} marcado${a.length > 1 ? 's' : ''} como pago${a.length > 1 ? 's' : ''}`, 'Desfazer', () => despagar(a.map(r => achaRec(r.id))));
+  };
+}
+
+/* ---------- Férias ---------- */
+function formFerias(id) {
+  const fr = id ? S.ferias.find(x => x.id === id) : { id: uid(), inicio: S.sel || HOJE, fim: addD(S.sel || HOJE, 6), desc:'Férias' };
+  const novo = !id;
+  const b = openSheet(novo ? 'Férias ou folga' : 'Editar período', `<form id="ff">
+    <label class="f"><span>Descrição</span><input class="in" name="desc" value="${esc(fr.desc)}" list="descs"><datalist id="descs"><option>Férias</option><option>Folga</option><option>Congresso</option><option>Viagem</option></datalist></label>
+    <div class="row"><label class="f"><span>Início</span><input class="in" type="date" name="inicio" value="${fr.inicio}" required></label><label class="f"><span>Fim</span><input class="in" type="date" name="fim" value="${fr.fim}" required></label></div>
+    <button class="btn p w" type="submit">Salvar</button>
+    ${!novo ? `<div class="btns" style="margin-top:8px"><button class="btn d w" type="button" data-act2="delF">${ic('lixo')}Excluir</button></div>` : ''}
+  </form>`);
+  const f = b.querySelector('#ff');
+  const d = b.querySelector('[data-act2=delF]'); if (d) d.onclick = async () => { closeSheet(); await del('ferias', fr.id); toast('Período excluído'); };
+  f.onsubmit = async e => { e.preventDefault(); const o = { ...fr, desc: f.desc.value.trim() || 'Férias', inicio: f.inicio.value, fim: f.fim.value < f.inicio.value ? f.inicio.value : f.fim.value }; closeSheet(); await put('ferias', o); toast('Período salvo'); };
+}
+
+/* ---------- Novo (+) ---------- */
+function menuNovo() {
+  const mods = sortBy(S.modelos, m => m.ordem ?? 0), d = S.sel || HOJE;
+  const b = openSheet('Adicionar', `
+    <div class="muted" style="margin-bottom:8px">Plantão em <b>${dataLonga(d)}</b> <button class="btn sm g" data-trocadata>trocar</button><input type="date" class="in hide" data-novadata value="${d}" style="margin-top:6px"></div>
+    ${mods.length ? `<div class="h" style="margin-top:6px">Com um toque</div><div class="card">${mods.map(m => { const l = loc(m.localId); return `<button class="li" style="width:100%" data-addm="${m.id}"><span class="sq" style="--c:${l.cor}">${hh(dur(m))}</span><div class="g"><b>${esc(m.nome)}</b><span class="mono">${m.inicio}–${m.fim} · ${money(m.valor)}</span></div>${ic('plus')}</button>`; }).join('')}</div>` : `<div class="dica">Crie modelos de plantão em Ajustes para adicionar com um toque.</div>`}
+    <div class="btns" style="margin-top:14px;flex-direction:column">
+      <button class="btn w" data-o="p">${ic('ed')}Plantão personalizado</button>
+      <button class="btn w" data-o="r">${ic('cal')}Montar o mês (repetir)</button>
+      <button class="btn w" data-o="f">Férias ou folga</button>
+      ${!mods.length ? `<button class="btn w" data-o="m">${ic('plus')}Criar modelo</button>` : ''}
+    </div>`);
+  let data = d;
+  b.querySelector('[data-trocadata]').onclick = () => b.querySelector('[data-novadata]').classList.toggle('hide');
+  b.querySelector('[data-novadata]').onchange = e => { data = e.target.value || d; S.sel = data; b.querySelector('b').textContent = dataLonga(data); };
+  b.addEventListener('click', e => {
+    const am = e.target.closest('[data-addm]'); if (am) { closeSheet(); addModelo(am.dataset.addm, data); return; }
+    const o = e.target.closest('[data-o]'); if (!o) return;
+    closeSheet();
+    if (o.dataset.o === 'p') formPlantao(null, { data });
+    if (o.dataset.o === 'r') { formPlantao(null, { data }); setTimeout(() => { const s = document.querySelector('#fp [name=rep]'); if (s) { s.value = 'datas'; s.onchange(); s.scrollIntoView({ block:'center' }); } }, 50); }
+    if (o.dataset.o === 'f') formFerias();
+    if (o.dataset.o === 'm') formModelo();
+  });
+}
+async function addModelo(mid, data) {
+  const m = S.modelos.find(x => x.id === mid); if (!m) return;
+  const p = novoDeModelo(m, data);
+  await put('plantoes', p);
+  S.sel = data; S.mes = data.slice(0, 7);
+  toast(`${m.nome} · ${ddmm(data)}`, 'Desfazer', () => del('plantoes', p.id));
+}
+
+/* =========================================================
+   NOTIFICAÇÕES (Web Push — mesmo método da Agenda)
+   ========================================================= */
+function pushState() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return isIOS && !isStandalone ? 'ios-install' : 'unsupported';
+  if (Notification.permission === 'denied') return 'denied';
+  return Notification.permission === 'granted' && localStorage.getItem(LS('push:' + S.uid)) ? 'on' : 'off';
+}
+const b64ToBytes = b64 => { const p = '='.repeat((4 - b64.length % 4) % 4), s = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+const hashStr = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'd' + (h >>> 0).toString(36); };
+async function pushOn() {
+  S.pushErr = '';
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { toast('Permissão negada. Libere nas configurações do aparelho.'); return render(); }
+  let passo = 'ler a chave pública';
+  try {
+    const d = await FB.fs.getDoc(FB.fs.doc(FB.db, 'public', 'vapid'));
+    const pub = d.exists() ? d.data().publicKey : '';
+    if (!pub) throw new Error('A chave ainda não foi criada. Aguarde a primeira execução das notificações no GitHub (até 30 minutos) e tente de novo.');
+    passo = 'preparar o app';
+    const reg = await navigator.serviceWorker.ready;
+    passo = 'registrar no serviço de notificações';
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) { const cur = sub.options && sub.options.applicationServerKey ? btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : ''; if (cur && cur !== pub) { await sub.unsubscribe(); sub = null; } }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(pub) });
+    passo = 'salvar o aparelho';
+    const json = JSON.stringify(sub), id = hashStr(sub.endpoint);
+    await FB.fs.setDoc(uref('subs', id), { sub: json, ua: navigator.userAgent.slice(0, 160), criado: Date.now() });
+    localStorage.setItem(LS('push:' + S.uid), id);
+    toast('Notificações ativadas neste aparelho');
+  } catch (e) { S.pushErr = `Falha ao ${passo}: ${e.message || e}`; }
+  render();
+}
+async function pushOff() {
+  const id = localStorage.getItem(LS('push:' + S.uid));
+  try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
+  if (id) await del('subs', id);
+  localStorage.removeItem(LS('push:' + S.uid));
+  toast('Notificações desativadas neste aparelho'); render();
+}
+async function pushTeste() {
+  if (!('Notification' in window)) return toast('Este navegador não aceita notificações.');
+  if (Notification.permission !== 'granted') { const p = await Notification.requestPermission(); if (p !== 'granted') return toast('Permita as notificações para ver o teste.'); }
+  const prox = sortBy(S.plantoes.filter(p => p.data >= HOJE), p => p.data + p.inicio)[0];
+  const reg = await navigator.serviceWorker.ready;
+  reg.showNotification(prox ? `${prox.data === HOJE ? 'Hoje' : ddmm(prox.data)}: ${loc(prox.localId).nome}` : 'Teste do Plantonista', { body: prox ? `${prox.inicio}–${prox.fim} · ${hh(dur(prox))}` : 'Exemplo de lembrete.', icon: 'icon-192.png', tag: 'teste' });
+}
+
+/* =========================================================
+   CSV / BACKUP
+   ========================================================= */
+const CSV_COLS = ['data','local','inicio','fim','horas','valor','adicional','desc_adicional','pago','valor_pago','data_pago','pagamento_previsto','pagamento_solicitado','importante','observacao'];
+function csvDe(ps) {
+  const q = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const nf = v => String(+v || 0).replace('.', ',');
+  const linhas = ps.map(p => [p.data, loc(p.localId).nome, p.inicio, p.fim, nf(Math.round(dur(p) / 6) / 10), nf(p.valor), nf(p.extra), p.extraDesc || '', p.pago ? 'sim' : 'nao', p.pago ? nf(p.valorPago) : '', p.dataPago || '', p.prev || '', p.notaSolicitada || '', p.importante ? 'sim' : 'nao', p.nota || ''].map(q).join(';'));
+  return '﻿' + CSV_COLS.join(';') + '\n' + linhas.join('\n');
+}
+function baixar(nome, conteudo, tipo) {
+  const blob = new Blob([conteudo], { type: tipo });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function parseCSV(txt) {
+  txt = txt.replace(/^﻿/, '');
+  const sep = (txt.split('\n')[0].match(/;/g) || []).length >= (txt.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (q) { if (c === '"' && txt[i+1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === sep) { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i+1] === '\n') i++; row.push(cur); if (row.some(x => x.trim())) rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  row.push(cur); if (row.some(x => x.trim())) rows.push(row);
+  return rows;
+}
+const normData = s => { s = (s || '').trim(); let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}-${m[2]}-${m[3]}`; m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (m) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${p2(m[2])}-${p2(m[1])}`; return ''; };
+const normHora = s => { const m = (s || '').trim().match(/^(\d{1,2})[:h](\d{2})?/); return m ? `${p2(m[1])}:${m[2] || '00'}` : ''; };
+function abrirArquivo(accept, cb) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = accept;
+  inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(r.result, f.name); r.readAsText(f, 'utf-8'); };
+  inp.click();
+}
+function importarCSV() {
+  abrirArquivo('.csv,text/csv', async txt => {
+    const rows = parseCSV(txt); if (rows.length < 2) return toast('Arquivo vazio.');
+    const h = rows[0].map(x => x.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_'));
+    const ix = k => h.indexOf(k);
+    if (ix('data') < 0 || ix('local') < 0) return toast('O CSV precisa ter as colunas "data" e "local".');
+    const novosLocais = {}, ops = [];
+    const porNome = n => S.locais.find(l => l.nome.trim().toLowerCase() === n.trim().toLowerCase()) || novosLocais[n.trim().toLowerCase()];
+    let ignorados = 0;
+    rows.slice(1).forEach(r => {
+      const g = k => ix(k) >= 0 ? (r[ix(k)] || '').trim() : '';
+      const data = normData(g('data')), nome = g('local');
+      if (!data || !nome) { ignorados++; return; }
+      let l = porNome(nome);
+      if (!l) { l = { id: uid(), nome, sigla:'', cor: CORES[(S.locais.length + Object.keys(novosLocais).length) % CORES.length][0], tipo:'plantao', regra:'manual', ordem: S.locais.length + Object.keys(novosLocais).length }; novosLocais[nome.toLowerCase()] = l; ops.push({ col:'locais', obj:l }); }
+      const pago = /^(sim|s|1|true|pago)$/i.test(g('pago'));
+      const p = { id: uid(), localId: l.id, data, inicio: normHora(g('inicio')) || '07:00', fim: normHora(g('fim')) || '19:00', valor: num(g('valor')), extra: num(g('adicional')), extraDesc: g('desc_adicional'), nota: g('observacao'), importante: /^(sim|s|1|true)$/i.test(g('importante')), semLembrete:false, pago, valorPago: pago ? (num(g('valor_pago')) || num(g('valor')) + num(g('adicional'))) : 0, dataPago: pago ? (normData(g('data_pago')) || data) : '', prev: normData(g('pagamento_previsto')) || prevPag(l, data), notaSolicitada: normData(g('pagamento_solicitado')) };
+      ops.push({ col:'plantoes', obj:p });
+    });
+    const n = ops.filter(o => o.col === 'plantoes').length, nl = Object.keys(novosLocais).length;
+    const ok = await confirmar('Importar CSV', `Encontrados <b>${n} plantões</b>${nl ? ` e <b>${nl} locais novos</b>` : ''}.${ignorados ? ` ${ignorados} linha(s) sem data ou local serão ignoradas.` : ''}`, [{ t:'Importar', v:1, cls:'p' }]);
+    if (!ok) return;
+    await putMany(ops); toast(`${n} plantões importados`);
+  });
+}
+function backup() {
+  const dados = { app:'plantonista', versao:1, gerado:new Date().toISOString(), usuario:S.user, locais:S.locais, modelos:S.modelos, plantoes:S.plantoes, ferias:S.ferias, cfg:S.cfg };
+  baixar(`plantonista-backup-${HOJE}.json`, JSON.stringify(dados, null, 1), 'application/json');
+}
+function restaurar() {
+  abrirArquivo('.json,application/json', async txt => {
+    let d; try { d = JSON.parse(txt); } catch (e) { return toast('Arquivo inválido.'); }
+    if (d.app !== 'plantonista') return toast('Este arquivo não é um backup do Plantonista.');
+    const modo = await confirmar('Restaurar backup', `Backup de ${d.gerado ? ddmmaa(d.gerado.slice(0,10)) : '—'} com <b>${(d.plantoes||[]).length} plantões</b> e <b>${(d.locais||[]).length} locais</b>.`, [{ t:'Juntar com os dados atuais', v:'juntar', cls:'p' }, { t:'Substituir tudo', v:'subst', cls:'d' }]);
+    if (!modo) return;
+    const ops = [];
+    if (modo === 'subst') ['locais','modelos','plantoes','ferias'].forEach(c => S[c].forEach(x => ops.push({ col:c, id:x.id, del:true })));
+    ['locais','modelos','plantoes','ferias'].forEach(c => (d[c] || []).forEach(x => x && x.id && ops.push({ col:c, obj:x })));
+    await putMany(ops);
+    if (d.cfg) { S.cfg = Object.assign(DEFCFG(), d.cfg); await saveCfg(); }
+    toast('Backup restaurado');
+  });
+}
+
+/* ---------- Senha ---------- */
+function formSenha() {
+  const b = openSheet('Trocar senha', `<form id="fs">
+    <label class="f"><span>Senha atual</span><input class="in" type="password" name="a" autocomplete="current-password" required></label>
+    <label class="f"><span>Nova senha</span><input class="in" type="password" name="n" autocomplete="new-password" minlength="6" required></label>
+    <label class="f"><span>Confirmar nova senha</span><input class="in" type="password" name="n2" autocomplete="new-password" required></label>
+    <div class="err hide" data-e></div>
+    <button class="btn p w" type="submit">Salvar nova senha</button></form>`);
+  const f = b.querySelector('#fs'), er = b.querySelector('[data-e]');
+  f.onsubmit = async e => {
+    e.preventDefault(); er.classList.add('hide');
+    if (f.n.value !== f.n2.value) { er.textContent = 'As senhas não conferem.'; return er.classList.remove('hide'); }
+    try {
+      const u = FB.auth.currentUser;
+      await FB.au.reauthenticateWithCredential(u, FB.au.EmailAuthProvider.credential(u.email, f.a.value));
+      await FB.au.updatePassword(u, f.n.value);
+      closeSheet(); toast('Senha alterada');
+    } catch (err) { er.textContent = (err.code || '').includes('credential') || (err.code || '').includes('wrong') ? 'Senha atual incorreta.' : 'Não foi possível trocar a senha.'; er.classList.remove('hide'); }
+  };
+}
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+document.addEventListener('click', async e => {
+  const nv = e.target.closest('[data-nav]'); if (nv) return go(nv.dataset.nav);
+  const a = e.target.closest('[data-act]'); if (!a || !S.uid) return;
+  const act = a.dataset.act, id = a.dataset.id;
+  switch (act) {
+    case 'novo': return menuNovo();
+    case 'dia': S.sel = a.dataset.d; if (a.dataset.d.slice(0,7) !== S.mes) S.mes = a.dataset.d.slice(0,7); return render();
+    case 'mesAnt': S.mes = addM(S.mes, -1); S.sel = S.mes === HOJE.slice(0,7) ? HOJE : `${S.mes}-01`; return render();
+    case 'mesProx': S.mes = addM(S.mes, 1); S.sel = S.mes === HOJE.slice(0,7) ? HOJE : `${S.mes}-01`; return render();
+    case 'hoje': S.mes = HOJE.slice(0,7); S.sel = HOJE; return render();
+    case 'modo': S.modo = S.modo === 'mes' ? 'lista' : 'mes'; return render();
+    case 'priv': S.cfg.privacidade = !S.cfg.privacidade; saveCfg(); return render();
+    case 'filtro': { const f = new Set(S.cfg.filtro || []); f.has(id) ? f.delete(id) : f.add(id); S.cfg.filtro = [...f]; saveCfg(); return render(); }
+    case 'filtroLimpa': S.cfg.filtro = []; saveCfg(); return render();
+    case 'okInstala': localStorage.setItem(LS('dicaInstala'), '1'); return render();
+    case 'editP': return formPlantao(id);
+    case 'novoP': return formPlantao(null, { data: S.sel });
+    case 'addMod': return addModelo(id, S.sel);
+    case 'pagar': return formPagar(id);
+    case 'despagar': { const r = achaRec(id); if (!r) return; const ok = await confirmar('Desfazer pagamento', `Marcar <b>${esc(loc(r.localId).nome)}</b> (${rotulo(r)}) como <b>não pago</b>?`, [{ t:'Desfazer pagamento', v:1, cls:'d' }]); if (ok) { await despagar([r]); toast('Pagamento desfeito'); } return; }
+    case 'finAnt': S.finMes = addM(S.finMes, -1); return render();
+    case 'finProx': S.finMes = addM(S.finMes, 1); return render();
+    case 'finToggle': S.finOpen[id] = !S.finOpen[id]; return render();
+    case 'pagarLocal': return formPagarLocal(id);
+    case 'solicitar': { const p = S.plantoes.find(x => x.id === id); await put('plantoes', { ...p, notaSolicitada: HOJE }); return toast('Solicitação registrada'); }
+    case 'relTipo': S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) S.rel.local = locaisOrd()[0]?.id || ''; return render();
+    case 'pdf': return gerarPDF();
+    case 'csvRel': { const { ps, P } = dadosRel(); return baixar(`plantonista-${P.txt.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`, csvDe(ps), 'text/csv;charset=utf-8'); }
+    case 'csvTudo': return baixar(`plantonista-plantoes-${HOJE}.csv`, csvDe(sortBy(S.plantoes, p => p.data + p.inicio)), 'text/csv;charset=utf-8');
+    case 'csvImp': return importarCSV();
+    case 'bkp': return backup();
+    case 'restaurar': return restaurar();
+    case 'novoLocal': return formLocal();
+    case 'editLocal': return formLocal(id);
+    case 'novoModelo': return formModelo();
+    case 'editModelo': return formModelo(id);
+    case 'novaFer': return formFerias();
+    case 'editFer': return formFerias(id);
+    case 'ordL': case 'ordM': {
+      const col = act === 'ordL' ? 'locais' : 'modelos';
+      const lst = act === 'ordL' ? locaisOrd() : sortBy(S.modelos, m => m.ordem ?? 0);
+      const i = lst.findIndex(x => x.id === id), j = i + +a.dataset.d;
+      if (j < 0 || j >= lst.length) return;
+      [lst[i], lst[j]] = [lst[j], lst[i]];
+      lst.forEach((x, k) => x.ordem = k);
+      return putMany(lst.map(x => ({ col, obj:{ ...x } })));
+    }
+    case 'antes': { const v = +a.dataset.v, L = S.cfg.lembretes; L.antes = (L.antes || []).includes(v) ? L.antes.filter(x => x !== v) : [...(L.antes || []), v].sort((x, y) => x - y); saveCfg(); return render(); }
+    case 'semana': S.cfg.semana = a.dataset.v; saveCfg(); return render();
+    case 'pushOn': return pushOn();
+    case 'pushOff': return pushOff();
+    case 'pushTeste': return pushTeste();
+    case 'senha': return formSenha();
+    case 'sair': { const ok = await confirmar('Sair', 'Sair da sua conta neste aparelho?', [{ t:'Sair', v:1, cls:'d' }]); if (ok) { if (localStorage.getItem(LS('push:' + S.uid))) await pushOff(); await FB.au.signOut(FB.auth); } return; }
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (!S.uid || t.closest('.ov')) return;
+  if (t.dataset.rel) { S.rel[t.dataset.rel] = t.value; if (t.dataset.rel === 'local') S.rel.ciclo = ''; return render(); }
+  if (t.dataset.cfgl) { S.cfg.lembretes[t.dataset.cfgl] = t.value; saveCfg(); return toast('Lembrete salvo'); }
+  if (t.name === 'lAtivo') { S.cfg.lembretes.ativo = t.checked; saveCfg(); return; }
+  if (t.name === 'lPag') { S.cfg.lembretes.pag = t.checked; saveCfg(); return; }
+  if (t.name === 'noturno') { S.cfg.noturnoDoisDias = t.checked; saveCfg(); return; }
+  if (t.name === 'privacidade') { S.cfg.privacidade = t.checked; saveCfg(); return; }
+});
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (['agenda','financeiro','relatorios','ajustes'].includes(v) && v !== S.view) { S.view = v; render(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.uid && hojeISO() !== HOJE) { const antigo = HOJE; HOJE = hojeISO(); if (S.sel === antigo) { S.sel = HOJE; S.mes = HOJE.slice(0,7); } render(); } });
+
+/* =========================================================
+   INÍCIO
+   ========================================================= */
+function entrar(u) {
+  S.uid = u.uid; S.user = (u.email || '').replace(DOMINIO, '');
+  listen(); render();
+}
+(async function iniciar() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  const h = location.hash.slice(1); if (['agenda','financeiro','relatorios','ajustes'].includes(h)) S.view = h;
+  try { await loadFB(); }
+  catch (e) { $('#app').innerHTML = `<div class="login"><div class="logo">Plantonista</div><div class="vazio">Não foi possível carregar. Confira a conexão com a internet e abra o app de novo.</div><button class="btn p w" style="margin-top:14px" onclick="location.reload()">Tentar de novo</button></div>`; return; }
+  FB.au.onAuthStateChanged(FB.auth, async u => {
+    unsubs.forEach(x => x()); unsubs = [];
+    if (!u) { S.uid = null; Object.assign(S, { locais:[], modelos:[], plantoes:[], ferias:[], cfg:DEFCFG() }); return renderLogin(); }
+    if (S.criando) return;
+    entrar(u);
+  });
+})();
+</script>
+</body>
+</html>
