@@ -500,7 +500,8 @@ function renderLogin(modo = 'entrar', erro = '') {
         S.loginErr = 'Código de convite inválido.'; S.loginModo = 'criar';
         S.criando = false;
         await cred.user.delete().catch(() => FB.au.signOut(FB.auth));
-        return renderLogin();
+        if (S.loginErr) renderLogin();
+        return;
       }
       S.criando = false;
       entrar(cred.user);

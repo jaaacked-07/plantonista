@@ -52,6 +52,14 @@ const pub = (await pubRef.get()).data();
 if (!pub || pub.publicKey !== keys.publicKey) await pubRef.set({ publicKey: keys.publicKey });
 webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
 
+// Diagnóstico do código de convite (sem expor o código) e correção de espaços
+try {
+  const cRef = db.collection('config').doc('app'), c = await cRef.get();
+  const d = c.exists ? c.data() : null, v = d ? d.convite : undefined;
+  if (typeof v === 'string' && v !== v.trim()) await cRef.set({ ...d, convite: v.trim() });
+  await db.collection('public').doc('diag').set({ configApp: c.exists, campos: d ? Object.keys(d) : [], tipo: typeof v, tamanho: typeof v === 'string' ? v.trim().length : 0, tinhaEspacos: typeof v === 'string' && v !== v.trim(), colecoes: (await db.listCollections()).map(x => x.id), quando: new Date().toISOString() });
+} catch (e) { console.log('Diag falhou:', e.message); }
+
 async function processUser(U) {
   const subsSnap = await U.collection('subs').get();
   const tokens = subsSnap.docs.map(d => { try { return { ref: d.ref, sub: JSON.parse(d.data().sub) }; } catch (e) { return null; } }).filter(t => t && t.sub && t.sub.endpoint);
