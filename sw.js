@@ -1,8 +1,9 @@
-const VERSION = 'plantonista-v6';
+const VERSION = 'plantonista-v7';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' garante que a cópia salva é a versão nova, não uma antiga guardada pelo navegador
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -11,12 +12,25 @@ self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET') return;
   const u = new URL(r.url);
-  if (u.origin !== location.origin) return;
+  const sdk = u.hostname === 'www.gstatic.com' && u.pathname.startsWith('/firebasejs/');
+  if (u.origin !== location.origin && !sdk) return;
   if (r.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('index.html')) {
-    e.respondWith(fetch(r).then(res => { const c = res.clone(); caches.open(VERSION).then(x => x.put('./index.html', c)); return res; }).catch(() => caches.match('./index.html')));
+    // versão mais nova da internet (até 4 s); sem internet ou lenta, abre a cópia salva
+    e.respondWith((async () => {
+      const c = await caches.open(VERSION);
+      const net = fetch(r, { cache: 'no-store' }).then(res => { if (res && res.ok) c.put('./index.html', res.clone()); return res; });
+      try { const res = await Promise.race([net, new Promise(ok => setTimeout(() => ok(null), 4000))]); if (res) return res; } catch (_) {}
+      const hit = await c.match('./index.html');
+      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+      try { return await net; } catch (_) { return new Response('Sem conexão', { status: 503 }); }
+    })());
     return;
   }
-  e.respondWith(caches.match(r).then(hit => hit || fetch(r).then(res => { const c = res.clone(); caches.open(VERSION).then(x => x.put(r, c)); return res; })));
+  e.respondWith(caches.open(VERSION).then(async c => {
+    const hit = await c.match(r);
+    const net = fetch(r).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()); return res; }).catch(() => hit);
+    return hit || net;
+  }));
 });
 
 /* ---------- Notificações (Web Push) ---------- */

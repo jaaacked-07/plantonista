@@ -292,9 +292,9 @@ const FB_CFG = {
   messagingSenderId: "584723414839",
   appId: "1:584723414839:web:eba7a0bac2e1c2d7e3e4b2"
 };
-const FBV = '10.12.4';
+const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.0';
+const VERSAO = '1.1';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -378,8 +378,10 @@ async function loadFB() {
   ]);
   const app = appM.initializeApp(FB_CFG);
   let db;
-  try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
+  // cache só em memória: o cache em disco do Firebase travava no iPhone (ações que não concluíam)
+  try { db = fsM.initializeFirestore(app, { localCache: fsM.memoryLocalCache() }); }
   catch (e) { db = fsM.getFirestore(app); }
+  try { await fsM.clearIndexedDbPersistence(db); } catch (e) {}
   const auth = authM.getAuth(app);
   try { await authM.setPersistence(auth, authM.indexedDBLocalPersistence); } catch (e) {}
   FB = { app, db, auth, au: authM, fs: fsM };
@@ -387,33 +389,100 @@ async function loadFB() {
 const uref = (...p) => FB.fs.doc(FB.db, 'users', S.uid, ...p);
 const ucol = c => FB.fs.collection(FB.db, 'users', S.uid, c);
 const clean = o => JSON.parse(JSON.stringify(o));
-function put(col, obj) { obj.upd = Date.now(); return FB.fs.setDoc(uref(col, obj.id), clean(obj)).catch(errW); }
-function del(col, id) { return FB.fs.deleteDoc(uref(col, id)).catch(errW); }
-async function putMany(ops) { // ops: [{col, obj}|{col, id, del:true}]
-  for (let i = 0; i < ops.length; i += 450) {
-    const b = FB.fs.writeBatch(FB.db);
-    ops.slice(i, i+450).forEach(o => o.del ? b.delete(uref(o.col, o.id)) : (o.obj.upd = Date.now(), b.set(uref(o.col, o.obj.id), clean(o.obj))));
-    await b.commit().catch(errW);
-  }
+/* Gravação local primeiro: a tela muda na hora, a alteração fica guardada no aparelho
+   e é enviada à nuvem em segundo plano (reenvia sozinha se a internet falhar). */
+const COLS = ['locais','modelos','plantoes','ferias'];
+const pendK = () => LS('pend:' + S.uid);
+const pendLoad = () => { try { return JSON.parse(localStorage.getItem(pendK()) || '{}'); } catch (e) { return {}; } };
+const pendSave = o => { try { localStorage.setItem(pendK(), JSON.stringify(o)); } catch (e) {} };
+function aplicaLocal(col, id, obj) {
+  if (col === 'meta') { if (obj) S.cfg = Object.assign(DEFCFG(), obj, { lembretes: Object.assign(DEFCFG().lembretes, obj.lembretes || {}) }); return; }
+  const arr = S[col]; if (!Array.isArray(arr)) return;
+  const i = arr.findIndex(x => x.id === id);
+  if (obj) { if (i >= 0) arr[i] = obj; else arr.push(obj); } else if (i >= 0) arr.splice(i, 1);
 }
-function saveCfg() { return FB.fs.setDoc(uref('meta','config'), clean(S.cfg)).catch(errW); }
+function enfileira(ops) { // ops: [{col, id, obj|null}]
+  if (!ops.length) return;
+  const p = pendLoad(), t = Date.now();
+  ops.forEach(o => { p[o.col + '/' + o.id] = { col:o.col, id:o.id, obj:o.obj, t }; aplicaLocal(o.col, o.id, o.obj); });
+  pendSave(p); guardaCache(); schedule(); envia();
+}
+let enviando = null;
+function envia() {
+  if (!FB || !S.uid) return Promise.resolve();
+  if (enviando) { enviando.mais = true; return enviando.p; }
+  const ctl = { mais:false };
+  ctl.p = (async () => {
+    const lote = Object.entries(pendLoad());
+    if (!lote.length) return;
+    let falhou = false;
+    const corrida = Promise.allSettled(lote.map(([k, o]) => (o.obj ? FB.fs.setDoc(uref(o.col, o.id), o.obj) : FB.fs.deleteDoc(uref(o.col, o.id))).then(() => k)));
+    const res = await Promise.race([corrida, new Promise(r => setTimeout(() => r(null), 20000))]);
+    if (!res) { falhou = true; }
+    else {
+      const p = pendLoad();
+      res.forEach((r, i) => {
+        const [k, o] = lote[i];
+        if (r.status === 'fulfilled') { if (p[k] && p[k].t === o.t) delete p[k]; }
+        else if (r.reason && r.reason.code === 'permission-denied') { delete p[k]; errW(r.reason); }
+        else falhou = true;
+      });
+      pendSave(p);
+    }
+    S.pend = Object.keys(pendLoad()).length;
+    if (falhou) setTimeout(() => envia(), 15000);
+  })().finally(() => { enviando = null; if (ctl.mais) envia(); });
+  enviando = ctl;
+  return ctl.p;
+}
+function sobrepoe(col, docs) { // dados da nuvem + alterações locais ainda não enviadas
+  Object.values(pendLoad()).forEach(o => {
+    if (o.col !== col) return;
+    const i = docs.findIndex(x => x.id === o.id);
+    if (o.obj) { if (i >= 0) docs[i] = o.obj; else docs.push(o.obj); } else if (i >= 0) docs.splice(i, 1);
+  });
+  return docs;
+}
+function guardaCache() { try { localStorage.setItem(LS('cache:' + S.uid), JSON.stringify({ locais:S.locais, modelos:S.modelos, plantoes:S.plantoes, ferias:S.ferias, cfg:S.cfg })); } catch (e) {} }
+function leCache() {
+  try { const c = JSON.parse(localStorage.getItem(LS('cache:' + S.uid)) || 'null'); if (!c) return; COLS.forEach(k => { S[k] = sobrepoe(k, c[k] || []); S.loaded[k] = true; }); const pc = pendLoad()['meta/config']; aplicaLocal('meta', 'config', pc ? pc.obj : c.cfg); S.loaded.cfg = true; } catch (e) {}
+}
+function put(col, obj) { obj.upd = Date.now(); enfileira([{ col, id:obj.id, obj:clean(obj) }]); return Promise.resolve(); }
+function del(col, id) { enfileira([{ col, id, obj:null }]); return Promise.resolve(); }
+function putMany(ops) { // ops: [{col, obj}|{col, id, del:true}]
+  const t = Date.now();
+  enfileira(ops.map(o => o.del ? { col:o.col, id:o.id, obj:null } : (o.obj.upd = t, { col:o.col, id:o.obj.id, obj:clean(o.obj) })));
+  return Promise.resolve();
+}
+function saveCfg() { enfileira([{ col:'meta', id:'config', obj:clean(S.cfg) }]); return Promise.resolve(); }
 function errW(e) { console.error(e); toast(e && e.code === 'permission-denied' ? 'Não foi possível salvar (sem permissão). Feche e abra o app; se continuar, me avise.' : 'Não foi possível salvar: ' + ((e && (e.code || e.message)) || 'erro desconhecido')); }
 
 function listen() {
   unsubs.forEach(u => u()); unsubs = [];
-  ['locais','modelos','plantoes','ferias'].forEach(c => {
+  if (!S.loaded.plantoes) leCache();
+  COLS.forEach(c => {
     unsubs.push(FB.fs.onSnapshot(ucol(c), snap => {
-      S[c] = snap.docs.map(d => d.data());
-      S.loaded[c] = true; schedule();
-    }, e => { console.error(c, e); falhaLeitura(e); }));
+      S[c] = sobrepoe(c, snap.docs.map(d => d.data()));
+      S.loaded[c] = true; guardaCache(); schedule();
+    }, e => { console.error(c, e); travou(e); falhaLeitura(e); }));
   });
   unsubs.push(FB.fs.onSnapshot(uref('meta','config'), d => {
     S.tentativas = 0;
-    const def = DEFCFG(), v = d.exists() ? d.data() : {};
-    S.cfg = Object.assign(def, v, { lembretes: Object.assign(def.lembretes, v.lembretes || {}) });
-    S.loaded.cfg = true; schedule();
-  }, e => falhaLeitura(e)));
+    const pc = pendLoad()['meta/config'];
+    aplicaLocal('meta', 'config', pc ? pc.obj : (d.exists() ? d.data() : {}));
+    S.loaded.cfg = true; guardaCache(); schedule();
+  }, e => { travou(e); falhaLeitura(e); }));
+  envia();
 }
+// Se o Firebase entrar em estado de erro interno, recarrega o app uma vez (as alterações ficam guardadas e são reenviadas)
+function travou(e) {
+  if (!/INTERNAL ASSERTION|Unexpected state/i.test(String(e && (e.message || e)))) return;
+  try { if (sessionStorage.getItem(LS('recarregou'))) return; sessionStorage.setItem(LS('recarregou'), '1'); } catch (x) {}
+  location.reload();
+}
+window.addEventListener('error', e => travou(e.error || e.message));
+window.addEventListener('unhandledrejection', e => travou(e.reason));
+window.addEventListener('online', () => envia());
 let retryT = 0;
 function falhaLeitura(e) {
   if (retryT || !S.uid) return;
@@ -911,7 +980,7 @@ function vAjustes() {
     <div class="sw"><div class="t">Usuário<span class="muted mono">${esc(S.user)}</span></div><button class="btn sm" data-act="senha">Trocar senha</button></div>
     <div class="sw"><div class="t">Sair deste aparelho</div><button class="btn sm d" data-act="sair">${ic('sair')}Sair</button></div>
   </div>
-  <p class="muted" style="text-align:center;margin-top:20px"><span style="font-family:var(--mao);color:var(--roxo);font-size:20px">Plantonista</span> · versão ${VERSAO}</p>
+  <p class="muted" style="text-align:center;margin-top:20px"><span style="font-family:var(--mao);color:var(--roxo);font-size:20px">Plantonista</span> · versão ${VERSAO}</p>${Object.keys(pendLoad()).length ? `<p class="muted" style="text-align:center;margin-top:6px">${Object.keys(pendLoad()).length} alteração(ões) aguardando internet para ir à nuvem · <button class="link" data-act="enviarAgora">Enviar agora</button></p>` : ''}
   <input type="file" id="fileIn" class="hide">`;
 }
 function descLocal(l) {
@@ -1464,6 +1533,7 @@ document.addEventListener('click', async e => {
     case 'filtroLimpa': S.cfg.filtro = []; S.cfg.filtroTag = []; saveCfg(); return render();
     case 'filtroTag': { const f = new Set(S.cfg.filtroTag || []); f.has(id) ? f.delete(id) : f.add(id); S.cfg.filtroTag = [...f]; saveCfg(); return render(); }
     case 'tagCor': S.cfg.tagCores = { ...(S.cfg.tagCores || {}), [a.dataset.t]: a.dataset.v }; saveCfg(); return render();
+    case 'enviarAgora': await envia(); render(); return toast(Object.keys(pendLoad()).length ? 'Ainda sem conexão. Vou tentar de novo sozinho.' : 'Tudo enviado para a nuvem');
     case 'okInstala': localStorage.setItem(LS('dicaInstala'), '1'); return render();
     case 'editP': { const pp = S.plantoes.find(x => x.id === id); if (pp && a.classList.contains('bar')) S.sel = pp.data; return formPlantao(id); }
     case 'novoP': return formPlantao(null, { data: S.sel });
@@ -1578,16 +1648,18 @@ document.addEventListener('mousedown', dStart); document.addEventListener('mouse
 document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.dia')) e.preventDefault(); });
 
 window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (['agenda','financeiro','relatorios','ajustes'].includes(v) && v !== S.view) { S.view = v; render(); } });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && S.uid && hojeISO() !== HOJE) { const antigo = HOJE; HOJE = hojeISO(); if (S.sel === antigo) { S.sel = HOJE; S.mes = HOJE.slice(0,7); } render(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.uid) envia(); if (!document.hidden && S.uid && hojeISO() !== HOJE) { const antigo = HOJE; HOJE = hojeISO(); if (S.sel === antigo) { S.sel = HOJE; S.mes = HOJE.slice(0,7); } render(); } });
 
 /* =========================================================
    INÍCIO
    ========================================================= */
 async function entrar(u) {
   S.uid = u.uid; S.user = (u.email || '').replace(DOMINIO, '');
+  if (localStorage.getItem(LS('perfil:' + u.uid))) { listen(); return render(); }
   let temPerfil = true;
   try { const d = await FB.fs.getDoc(FB.fs.doc(FB.db, 'users', u.uid)); temPerfil = d.exists(); } catch (e) { temPerfil = !(e && e.code === 'permission-denied') ? true : false; }
   if (!temPerfil) return concluirCadastro(u);
+  try { localStorage.setItem(LS('perfil:' + u.uid), '1'); } catch (e) {}
   listen(); render();
 }
 function concluirCadastro(u, erro = '') {
@@ -1607,13 +1679,17 @@ function concluirCadastro(u, erro = '') {
   };
 }
 (async function iniciar() {
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    const tinha = !!navigator.serviceWorker.controller; let rec = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinha && !rec) { rec = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(reg => { reg.update().catch(() => {}); document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); }).catch(() => {});
+  }
   const h = location.hash.slice(1); if (['agenda','financeiro','relatorios','ajustes'].includes(h)) S.view = h;
   try { await loadFB(); }
   catch (e) { $('#app').innerHTML = `<div class="login"><div class="logo">Plantonista</div><div class="vazio">Não foi possível carregar. Confira a conexão com a internet e abra o app de novo.</div><button class="btn p w" style="margin-top:14px" onclick="location.reload()">Tentar de novo</button></div>`; return; }
   FB.au.onAuthStateChanged(FB.auth, async u => {
     unsubs.forEach(x => x()); unsubs = [];
-    if (!u) { S.uid = null; Object.assign(S, { locais:[], modelos:[], plantoes:[], ferias:[], cfg:DEFCFG() }); return renderLogin(); }
+    if (!u) { S.uid = null; Object.assign(S, { locais:[], modelos:[], plantoes:[], ferias:[], cfg:DEFCFG(), loaded:{} }); return renderLogin(); }
     if (S.criando) return;
     entrar(u);
   });
