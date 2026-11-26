@@ -647,6 +647,7 @@ function render() {
   const it = (v, n, t) => `<button data-nav="${v}" class="${S.view === v ? 'on' : ''}">${ic(n)}${t}</button>`;
   nav.innerHTML = it('agenda','cal','Agenda') + it('financeiro','din','Financeiro') + `<button class="mais" data-act="novo" aria-label="Adicionar">${ic('plus')}</button>` + it('relatorios','rel','Relatórios') + it('ajustes','aj','Ajustes');
   const v = { agenda:vAgenda, financeiro:vFin, relatorios:vRel, ajustes:vAjustes }[S.view] || vAgenda;
+  if (S.view === 'relatorios') carregaPDF().catch(() => {});
   const y = window.scrollY;
   $('#app').innerHTML = v();
   window.scrollTo(0, y);
@@ -918,22 +919,58 @@ function vRel() {
   else html += `<div class="vazio" style="margin-top:16px">Nenhum plantão neste período.</div>`;
   return html;
 }
-function gerarPDF() {
+let PDFLIB = null;
+function carregaPDF() {
+  if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+  if (PDFLIB) return PDFLIB;
+  const add = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  PDFLIB = add('vendor/jspdf.umd.min.js').then(() => add('vendor/jspdf.plugin.autotable.min.js')).catch(e => { PDFLIB = null; throw e; });
+  return PDFLIB;
+}
+const hexRgb = h => { h = (h || '#6B2BD6').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
+async function gerarPDF() {
+  if (!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable)) { toast('Preparando o PDF…'); try { await carregaPDF(); } catch (e) { return toast('Não foi possível preparar o PDF. Confira a conexão.'); } }
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
-  const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
+  const atr = sortBy([...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE), r => r.prev);
   const lnome = R.local ? loc(R.local).nome : 'Todos os locais';
-  $('#print').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #6B2BD6;padding-bottom:6px">
-      <div><div class="pl">Plantonista</div><div style="font-family:var(--serif);font-weight:600;font-size:16px">Relatório de plantões · ${esc(P.txt)}</div></div>
-      <div style="text-align:right;font-size:11px;color:#5B5670">${esc(lnome)}<br>Usuário: ${esc(S.user)}<br>Gerado em ${ddmmaa(HOJE)}</div></div>
-    <h2>Resumo</h2><div class="pm">
-      <div><span>Total trabalhado</span><b>${money(z.trab)}</b></div><div><span>Recebido</span><b>${money(z.rec)}</b></div>
-      <div><span>A receber</span><b>${money(z.aReceber)}</b></div><div><span>Atrasado</span><b>${money(z.atrasado)}</b></div>
-      <div><span>Plantões</span><b>${z.n}</b></div><div><span>Dias</span><b>${z.dias}</b></div><div><span>Horas</span><b>${hh(z.min)}</b></div><div><span>Valor por hora</span><b>${money(z.vh)}</b></div></div>
-    ${linhas.length ? `<h2>Por local</h2><table><thead><tr><th>Local</th><th class="r">Plantões</th><th class="r">Horas</th><th class="r">Total</th><th class="r">R$/h</th><th class="r">Em aberto</th></tr></thead><tbody>${linhas.map(x => `<tr><td>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r">${money(x.aberto)}</td></tr>`).join('')}</tbody></table>` : ''}
-    ${sals.length ? `<h2>Salários</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th>Status</th><th class="r">Valor</th></tr></thead><tbody>${sals.map(s => `<tr><td>${esc(loc(s.localId).nome)}</td><td>${mesCurto(s.ref)}</td><td>${ddmmaa(s.prev)}</td><td>${ST_TXT[status(s)]}${s.pago ? ' em ' + ddmmaa(s.dataPago) : ''}</td><td class="r">${money(s.pago ? s.valorPago : s.valor)}</td></tr>`).join('')}</tbody></table>` : ''}
-    ${atr.length ? `<h2>Pagamentos atrasados</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td>${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data)}</td><td>${ddmmaa(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)} dias</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table>` : ''}
-    <h2>Plantões (${ps.length})</h2><table><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Horas</th><th class="r">Valor</th><th>Pagamento</th><th>Obs.</th></tr></thead><tbody>${ps.map(p => `<tr><td>${ddmmaa(p.data)} ${SEMC[dow(p.data)]}</td><td>${esc(loc(p.localId).nome)}</td><td>${p.inicio}–${p.fim}</td><td class="r">${hh(dur(p))}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—')}</td><td>${esc([tagP(p), p.dividido ? `Dividido com ${p.colega || 'colega'} (−${money(desconto(p))}, cheio ${money(p.valor)})` : '', p.extraDesc, p.nota].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
-  window.print();
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const ROXO = [107, 43, 214], TINTA = [23, 20, 31], CINZA = [91, 86, 112], W = 210, M = 14;
+  doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(24); doc.setTextColor(...ROXO); doc.text('Plantonista', M, 20);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt, M, 27);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...CINZA);
+  doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE)], W - M, 15, { align: 'right' });
+  doc.setDrawColor(...ROXO); doc.setLineWidth(0.8); doc.line(M, 31, W - M, 31);
+  const base = { theme: 'grid', margin: { left: M, right: M }, styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.8, textColor: TINTA, lineColor: [227, 222, 210], lineWidth: 0.2 }, headStyles: { fillColor: [239, 232, 252], textColor: [78, 27, 163], fontStyle: 'bold' } };
+  let y = 36;
+  const secao = t => { if (y > 265) { doc.addPage(); y = 18; } doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TINTA); doc.text(t, M, y); y += 2; };
+  const tabela = (head, body, extra = {}) => { doc.autoTable({ ...base, startY: y, head: [head], body, ...extra }); y = doc.lastAutoTable.finalY + 8; };
+  secao('Resumo');
+  tabela(['Total trabalhado', 'Recebido', 'A receber', 'Atrasado'], [[money(z.trab), money(z.rec), money(z.aReceber), money(z.atrasado)]], { styles: { ...base.styles, fontSize: 10, halign: 'center' } });
+  y -= 6;
+  tabela(['Plantões', 'Dias', 'Horas', 'Valor por hora'], [[String(z.n), String(z.dias), hh(z.min), money(z.vh)]], { styles: { ...base.styles, fontSize: 10, halign: 'center' } });
+  const dir = { halign: 'right' };
+  if (linhas.length) { secao('Por local'); tabela(['Local', 'Plantões', 'Horas', 'Total', 'R$/h', 'Em aberto'], linhas.map(x => [x.l.nome, x.n, hh(x.min), money(x.total), x.min ? money(x.vh) : '—', money(x.aberto)]), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir, 5: dir } }); }
+  const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
+  const espL = Object.entries(esp);
+  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) { secao('Por especialidade'); tabela(['Local · especialidade', 'Plantões', 'Horas', 'Total', 'Em aberto'], espL.map(([k, a]) => { const i = k.indexOf('|'); const t = k.slice(i + 1); return [loc(k.slice(0, i)).nome + (t ? ' - ' + t : ''), a.length, hh(a.reduce((x, p) => x + dur(p), 0)), money(a.reduce((x, p) => x + total(p), 0)), money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))]; }), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir } }); }
+  if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
+  if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
+  const divs = ps.filter(p => p.dividido);
+  if (divs.length) { secao('Plantões divididos'); tabela(['Data', 'Local', 'Colega', 'Valor cheio', 'Descontado', 'Sua parte'], divs.map(p => [ddmmaa(p.data), loc(p.localId).nome + (tagP(p) ? ' · ' + tagP(p) : ''), p.colega || '—', money(p.valor), money(desconto(p)), money(total(p))]), { columnStyles: { 3: dir, 4: dir, 5: dir } }); }
+  secao(`Plantões (${ps.length})`);
+  tabela(['Data', 'Local', 'Horário', 'Horas', 'Valor', 'Pagamento', 'Obs.'], ps.map(p => [ddmmaa(p.data) + ' ' + SEMC[dow(p.data)], loc(p.localId).nome + (tagP(p) ? ' · ' + tagP(p) : '') + (p.importante ? ' ★' : ''), p.inicio + '–' + p.fim, hh(dur(p)), money(p.pago ? p.valorPago : total(p)), p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—'), [p.dividido ? `Dividido com ${p.colega || 'colega'} (-${money(desconto(p))})` : '', p.extraDesc, p.nota].filter(Boolean).join(' · ')]),
+    { columnStyles: { 3: dir, 4: dir, 6: { cellWidth: 40 } }, didParseCell: d => { if (d.section === 'body' && d.column.index === 1) { const p = ps[d.row.index]; d.cell.styles.textColor = hexRgb(loc(p.localId).cor); d.cell.styles.fontStyle = 'bold'; } } });
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...CINZA); doc.text(`Plantonista · página ${i} de ${n}`, W / 2, 290, { align: 'center' }); }
+  const nome = `plantonista-${P.txt.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
+  const blob = doc.output('blob');
+  const file = new File([blob], nome, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Relatório Plantonista' }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  baixar(nome, blob, 'application/pdf');
+  toast('PDF gerado');
 }
 
 /* =========================================================
