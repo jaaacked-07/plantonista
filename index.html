@@ -764,9 +764,11 @@ function vFin() {
   const sm = (a, f = total) => a.reduce((s, r) => s + f(r), 0);
   const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${ym.slice(0,4)}</small></div>
     <div class="top-acts"><button class="ib" data-act="finAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="finProx" aria-label="Próximo mês">${ic('r')}</button></div></div>`;
+  const trabMes = S.plantoes.filter(p => p.data.slice(0,7) === ym), salMes = salarios().filter(x => x.ref === ym);
   const mets = `<div class="mets">
+    <div class="met" style="grid-column:1/-1"><span>Trabalhado em ${nomeMes(ym).toLowerCase()}</span><b>${money(sm([...trabMes, ...salMes]))}</b><small>${trabMes.length} ${trabMes.length === 1 ? 'plantão feito' : 'plantões feitos'} no mês · ${hh(trabMes.reduce((x, p) => x + dur(p), 0))} (igual à agenda e ao relatório)</small></div>
     <div class="met dest"><span>Recebido no mês</span><b>${money(sm(recMes, r => +r.valorPago || 0))}</b><small>${recMes.length} pagamento${recMes.length === 1 ? '' : 's'}</small></div>
-    <div class="met"><span>A receber no mês</span><b>${money(sm(prevMes))}</b><small>${prevMes.length} previsto${prevMes.length === 1 ? '' : 's'}</small></div>
+    <div class="met"><span>Previsto p/ receber</span><b>${money(sm(prevMes))}</b><small>${prevMes.length} pagamento${prevMes.length === 1 ? '' : 's'} com data em ${MESC[+ym.slice(5)-1]}</small></div>
     <div class="met ${atras.length ? 'alerta' : ''}"><span>Atrasado</span><b>${money(sm(atras))}</b><small>${atras.length} pendente${atras.length === 1 ? '' : 's'}</small></div>
     <div class="met"><span>Total em aberto</span><b>${money(sm(aberto))}</b><small>todos os meses</small></div></div>`;
   const linha = r => { const l = loc(r.localId); const st = status(r); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><button class="g" style="text-align:left" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}</b><span class="mono">${rotulo(r)}${!r.pago && r.prev ? ` · pgto ${ddmm(r.prev)}` : ''}${r.pago ? ` · pago ${ddmm(r.dataPago)}` : ''}</span>${st === 'atrasado' ? `<span style="color:var(--ambar)"> · ${diffD(HOJE, r.prev)} dias de atraso</span>` : ''}</button><div class="v">${money(r.pago ? r.valorPago : total(r))}</div><button class="pc-pay ${r.pago ? 'on' : ''}" style="width:40px;height:40px;border:1px solid var(--linha2);border-radius:4px" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="Pagar">${ic('ok')}</button></div>`; };
@@ -871,6 +873,7 @@ function linhasLocal(ps, sals) {
   }), x => -x.total);
 }
 function vRel() {
+  if (S.rel.tipo === 'ciclo' && S.rel.local) { const cs = ciclosDoLocal(S.rel.local); if (cs.length && !cs.includes(S.rel.ciclo)) S.rel.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; }
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
   const locs = locaisOrd();
   const seg = [['mes','Mês'],['ciclo','Ciclo'],['ano','Ano'],['periodo','Período'],['tudo','Tudo']].map(([v, t]) => `<button class="${R.tipo === v ? 'on' : ''}" data-act="relTipo" data-v="${v}">${t}</button>`).join('');
@@ -878,7 +881,7 @@ function vRel() {
   if (R.tipo === 'mes') campos = `<label class="f" style="margin:0"><span>Mês</span><input class="in" type="month" data-rel="mes" value="${R.mes}"></label>`;
   if (R.tipo === 'ano') { const anos = [...new Set([HOJE.slice(0,4), ...S.plantoes.map(p => p.data.slice(0,4))])].sort().reverse(); campos = `<label class="f" style="margin:0"><span>Ano</span><select class="in" data-rel="ano">${anos.map(a => `<option ${a === R.ano ? 'selected' : ''}>${a}</option>`).join('')}</select></label>`; }
   if (R.tipo === 'periodo') campos = `<div class="row"><label class="f" style="margin:0"><span>De</span><input class="in" type="date" data-rel="de" value="${R.de}"></label><label class="f" style="margin:0"><span>Até</span><input class="in" type="date" data-rel="ate" value="${R.ate}"></label></div>`;
-  if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
+  if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; if (R.local && cs.length && !cs.includes(R.ciclo)) R.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
   const filtro = `<label class="f" style="margin:0"><span>Local</span><select class="in" data-rel="local"><option value="">${R.tipo === 'ciclo' ? 'Escolha…' : 'Todos os locais'}</option>${locs.map(l => `<option value="${l.id}" ${l.id === R.local ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>`;
   let html = `<div class="top"><div class="titulo">Relatórios</div></div>
     <div class="seg" style="margin-bottom:12px">${seg}</div>
@@ -892,6 +895,7 @@ function vRel() {
       <div class="met"><span>Horas</span><b>${hh(z.min)}</b><small>${z.dias} dia${z.dias === 1 ? '' : 's'} trabalhado${z.dias === 1 ? '' : 's'}</small></div>
       <div class="met"><span>Valor por hora</span><b>${money(z.vh)}</b></div>
     </div>
+    <div class="muted" style="font-size:12px;margin-top:8px">${P.ciclo ? 'Plantões cujo pagamento está previsto para a data do ciclo.' : 'Conta os plantões pela data em que foram feitos (igual à agenda). No Financeiro, “Previsto p/ receber” usa a data de pagamento.'}</div>
     <div class="btns" style="margin-top:12px"><button class="btn" data-act="pdf">${ic('dl')}PDF</button><button class="btn" data-act="csvRel">${ic('dl')}CSV</button></div>`;
   const refMes = R.tipo === 'mes' ? R.mes : HOJE.slice(0,7);
   html += `<div class="h">Últimos 6 meses</div><div class="card chart">${chartMeses(refMes, R.local)}</div>`;
@@ -901,6 +905,9 @@ function vRel() {
     ${linhas.map(x => `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${x.l.cor};margin-right:6px"></span>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r" style="${x.atr ? 'color:var(--ambar)' : ''}">${money(x.aberto)}</td></tr>`).join('')}
     </tbody></table></div>`;
   }
+  const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
+  const espL = sortBy(Object.entries(esp), ([, a]) => -a.reduce((x, p) => x + total(p), 0));
+  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) html += `<div class="h">Por especialidade</div><div class="card tbw"><table class="tb"><thead><tr><th>Local · especialidade</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Em aberto</th></tr></thead><tbody>${espL.map(([k, a]) => { const [lid, t] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t ? corTag(t) : loc(lid).cor};margin-right:6px"></span>${esc(loc(lid).nome)}${t ? ' · <b>' + esc(t) + '</b>' : ''}</td><td class="r">${a.length}</td><td class="r">${hh(a.reduce((x, p) => x + dur(p), 0))}</td><td class="r">${money(a.reduce((x, p) => x + total(p), 0))}</td><td class="r">${money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))}</td></tr>`; }).join('')}</tbody></table></div>`;
   const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
   if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
   if (R.tipo === 'tudo' || R.tipo === 'ano') {
@@ -926,7 +933,7 @@ function gerarPDF() {
     ${sals.length ? `<h2>Salários</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th>Status</th><th class="r">Valor</th></tr></thead><tbody>${sals.map(s => `<tr><td>${esc(loc(s.localId).nome)}</td><td>${mesCurto(s.ref)}</td><td>${ddmmaa(s.prev)}</td><td>${ST_TXT[status(s)]}${s.pago ? ' em ' + ddmmaa(s.dataPago) : ''}</td><td class="r">${money(s.pago ? s.valorPago : s.valor)}</td></tr>`).join('')}</tbody></table>` : ''}
     ${atr.length ? `<h2>Pagamentos atrasados</h2><table><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td>${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data)}</td><td>${ddmmaa(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)} dias</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h2>Plantões (${ps.length})</h2><table><thead><tr><th>Data</th><th>Local</th><th>Horário</th><th class="r">Horas</th><th class="r">Valor</th><th>Pagamento</th><th>Obs.</th></tr></thead><tbody>${ps.map(p => `<tr><td>${ddmmaa(p.data)} ${SEMC[dow(p.data)]}</td><td>${esc(loc(p.localId).nome)}</td><td>${p.inicio}–${p.fim}</td><td class="r">${hh(dur(p))}</td><td class="r">${money(p.pago ? p.valorPago : total(p))}</td><td>${p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—')}</td><td>${esc([tagP(p), p.dividido ? `Dividido com ${p.colega || 'colega'} (−${money(desconto(p))}, cheio ${money(p.valor)})` : '', p.extraDesc, p.nota].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
-  setTimeout(() => window.print(), 250);
+  window.print();
 }
 
 /* =========================================================
@@ -1545,7 +1552,7 @@ document.addEventListener('click', async e => {
     case 'finToggle': S.finOpen[id] = !S.finOpen[id]; return render();
     case 'pagarLocal': return formPagarLocal(id);
     case 'solicitar': { const p = S.plantoes.find(x => x.id === id); await put('plantoes', { ...p, notaSolicitada: HOJE }); return toast('Solicitação registrada'); }
-    case 'relTipo': S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) S.rel.local = locaisOrd()[0]?.id || ''; return render();
+    case 'relTipo': { const ant = S.rel.tipo; S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) { S.rel.local = locaisOrd()[0]?.id || ''; S.rel.autoLocal = true; S.rel.ciclo = ''; } if (ant === 'ciclo' && S.rel.tipo !== 'ciclo' && S.rel.autoLocal) { S.rel.local = ''; S.rel.autoLocal = false; } return render(); }
     case 'pdf': return gerarPDF();
     case 'csvRel': { const { ps, P } = dadosRel(); return baixar(`plantonista-${P.txt.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`, csvDe(ps), 'text/csv;charset=utf-8'); }
     case 'csvTudo': return baixar(`plantonista-plantoes-${HOJE}.csv`, csvDe(sortBy(S.plantoes, p => p.data + p.inicio)), 'text/csv;charset=utf-8');
@@ -1585,7 +1592,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (!S.uid || t.closest('.ov')) return;
-  if (t.dataset.rel) { S.rel[t.dataset.rel] = t.value; if (t.dataset.rel === 'local') S.rel.ciclo = ''; return render(); }
+  if (t.dataset.rel) { S.rel[t.dataset.rel] = t.value; if (t.dataset.rel === 'local') { S.rel.ciclo = ''; S.rel.autoLocal = false; } return render(); }
   if (t.dataset.tagcustom) { S.cfg.tagCores = { ...(S.cfg.tagCores || {}), [t.dataset.tagcustom]: t.value }; saveCfg(); return render(); }
   if (t.dataset.cfgl) { S.cfg.lembretes[t.dataset.cfgl] = t.value; saveCfg(); return toast('Lembrete salvo'); }
   if (t.name === 'lAtivo') { S.cfg.lembretes.ativo = t.checked; saveCfg(); return; }
