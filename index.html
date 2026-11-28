@@ -311,6 +311,7 @@ const FB_CFG = {
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
 const VERSAO = '1.4';
+let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
 const NOTAS_VERSAO = 'O aviso de atualização agora fica na tela até você tocar em Ok, e depois de atualizar mostra o que mudou.';
 
 /* ---------- Ícones ---------- */
@@ -1766,7 +1767,7 @@ setTimeout(checaVersao, 3000);
 // Depois de atualizar: mostra o que mudou até tocar em Ok
 function novidades() {
   let vista = ''; try { vista = localStorage.getItem(LS('versaoVista')) || ''; } catch (e) {}
-  if (!vista) { let antigo = false; try { antigo = Object.keys(localStorage).some(k => k.startsWith(LS('cache:'))); } catch (e) {} if (!antigo) { try { localStorage.setItem(LS('versaoVista'), VERSAO); } catch (e) {} return; } vista = '0'; }
+  if (!vista) { if (!HAVIA_CACHE) { try { localStorage.setItem(LS('versaoVista'), VERSAO); } catch (e) {} return; } vista = '0'; }
   if (cmpVer(VERSAO, vista) <= 0 || document.querySelector('.upd')) return;
   const d = document.createElement('div'); d.className = 'upd';
   d.innerHTML = `<b>Plantonista atualizado (${esc(VERSAO)})</b><p>${esc(NOTAS_VERSAO)}</p><div class="btns"><button class="btn p">Ok</button></div>`;
