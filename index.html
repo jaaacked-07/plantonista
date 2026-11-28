@@ -168,9 +168,25 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .upd .btns .btn{height:36px}
 .upd .btn:not(.p){background:transparent;color:#fff;border-color:#4A4459}
 .ola{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--roxo-esc);margin:2px 0 6px}
-.cal.sw-l{animation:swl .22s ease-out}.cal.sw-r{animation:swr .22s ease-out}
+.cal.sw-l,#app.sw-l{animation:swl .22s ease-out}.cal.sw-r,#app.sw-r{animation:swr .22s ease-out}
 @keyframes swl{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}
 @keyframes swr{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
+.flist{display:flex;flex-direction:column;gap:6px}
+.fl{display:flex;align-items:stretch;background:var(--branco);border:1px solid var(--linha);border-left:5px solid var(--lc);border-radius:4px;overflow:hidden}
+.fl .g{flex:1;min-width:0;text-align:left;padding:9px 10px}
+.fl .g b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl .g span{display:block;font-size:12.5px;color:var(--cinza)}
+.fl .g .q{display:flex;align-items:center;gap:5px}
+.fl .g b .tagp{display:inline-block;font-size:10.5px;color:var(--c)}
+.fl .v{align-self:center;font-weight:600;font-size:14px;padding:0 8px;white-space:nowrap}
+.fl .fpay{width:46px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
+.fl.pago{background:var(--verde-cl);border-color:#BFE0CC;border-left-color:var(--lc)}
+.fl.pago .fpay{color:#fff;background:var(--verde)}
+.fl.pago .v{color:var(--verde)}
+.fl.pago .q{color:var(--verde)}
+.fl.atrasado{background:var(--verm-cl);border-color:#F2C4BF;border-left-color:var(--lc)}
+.fl.atrasado .q,.fl.atrasado .v{color:var(--verm)}
+.exc{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--verm);color:#fff;font:700 10px/1 Inter,sans-serif;font-style:normal}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -310,9 +326,9 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.4';
+const VERSAO = '1.5';
 let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
-const NOTAS_VERSAO = 'O aviso de atualização agora fica na tela até você tocar em Ok, e depois de atualizar mostra o que mudou.';
+const NOTAS_VERSAO = 'Financeiro mostra os plantões do mês iguais aos da agenda: pagos ficam verdes, atrasados vermelhos com “!”. Dá para trocar o mês deslizando o dedo.';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -678,7 +694,7 @@ function badge() {
   const lim = addD(HOJE, 7), n = S.plantoes.filter(p => p.data >= HOJE && p.data <= lim).length;
   (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
 }
-function go(view) { S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
+function go(view) { if (view === 'financeiro' && S.view === 'agenda') S.finMes = S.mes; if (view === 'relatorios' && S.view === 'agenda') S.rel.mes = S.mes; S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
 
 /* ---------- Cartão de plantão ---------- */
 function cardP(p, o = {}) {
@@ -777,39 +793,32 @@ function vLista() {
    FINANCEIRO
    ========================================================= */
 function vFin() {
-  const ym = S.finMes, R = recebiveis(), cur = HOJE.slice(0, 7), mesN = nomeMes(ym).toLowerCase();
-  const dp = r => r.pago ? (r.dataPago || '') : (r.prev || '');
+  const ym = S.finMes, cur = HOJE.slice(0, 7), mesN = nomeMes(ym).toLowerCase();
   const sm = (a, f = total) => a.reduce((s, r) => s + f(r), 0);
-  const doMes = sortBy(R.filter(r => dp(r).slice(0, 7) === ym && (r.pago || total(r) > 0)), r => dp(r));
+  // Plantões feitos no mês (iguais à agenda) + salário do mês
+  const doMes = sortBy([...S.plantoes.filter(p => p.data.slice(0, 7) === ym), ...salarios().filter(x => x.ref === ym)], r => r.sal ? `${ym}-32` : r.data + r.inicio);
   const caiu = doMes.filter(r => r.pago), falta = doMes.filter(r => !r.pago);
   const Y = sm(caiu, ef), Z = sm(falta), X = Y + Z, pct = X ? Math.round(Y / X * 100) : 0;
-  const atrasAnt = ym === cur ? sortBy(R.filter(r => !r.pago && r.prev && r.prev < `${ym}-01` && total(r) > 0), r => r.prev) : [];
-  const aberto = R.filter(r => !r.pago && total(r) > 0);
+  const atrasAnt = ym === cur ? sortBy(recebiveis().filter(r => !r.pago && r.prev && r.prev < HOJE && total(r) > 0 && (r.sal ? r.ref : r.data).slice(0, 7) < ym), r => r.prev) : [];
   const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${ym.slice(0,4)}</small></div>
     <div class="top-acts"><button class="ib" data-act="finAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="finProx" aria-label="Próximo mês">${ic('r')}</button></div></div>`;
   const linha = r => {
     const l = loc(r.localId), st = status(r), tg = r.sal ? '' : tagP(r);
-    const quando = r.pago ? `caiu ${ddmm(r.dataPago)}` : !r.prev ? 'sem data' : st === 'atrasado' ? `<span style="color:var(--ambar)">atrasado · era ${ddmm(r.prev)}</span>` : `previsto ${ddmm(r.prev)}`;
-    const origem = r.sal ? `Salário de ${mesCurto(r.ref)}` : `plantão de ${ddmm(r.data)}`;
-    return `<div class="ln" style="--c:${r.sal ? l.cor : corP(r)}"><span class="dot"></span><button class="g" style="text-align:left" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}${tg ? ' · ' + esc(tg) : ''}</b><span>${origem} · ${quando}</span>${r.dividido ? `<span style="display:block">÷ ${esc(r.colega || 'colega')} · −${money(desconto(r))} do valor cheio ${money(r.valor)}</span>` : ''}</button><div class="v">${money(ef(r))}</div><button class="pc-pay ${r.pago ? 'on' : ''}" style="width:40px;height:40px;border:1px solid var(--linha2);border-radius:4px" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="${r.pago ? 'Desfazer pagamento' : 'Marcar como pago'}">${ic('ok')}</button></div>`;
+    const quando = r.pago ? `pago ${ddmm(r.dataPago)}` : !r.prev ? 'sem data de pagamento' : st === 'atrasado' ? `atrasado · era ${ddmm(r.prev)}` : `pagamento ${ddmm(r.prev)}`;
+    const origem = r.sal ? `Salário de ${mesCurto(r.ref)}` : `${ddmm(r.data)} ${SEMC[dow(r.data)]} · ${hh(dur(r))}`;
+    return `<div class="fl ${st}" style="--lc:${l.cor}">
+      <button class="g" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}${tg ? ` <span class="tagp" style="--c:${corTag(tg)}">${esc(tg)}</span>` : ''}</b><span class="mono">${origem}</span><span class="q">${st === 'atrasado' ? '<i class="exc">!</i>' : ''}${quando}</span>${r.dividido ? `<span>÷ ${esc(r.colega || 'colega')} · −${money(desconto(r))} do cheio ${money(r.valor)}</span>` : ''}</button>
+      <div class="v mono">${money(ef(r))}</div>
+      <button class="fpay" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="${r.pago ? 'Desfazer pagamento' : 'Marcar como pago'}">${ic('ok')}</button></div>`;
   };
   let html = top + `<div class="hero"><span>Em ${mesN} você recebe</span><b>${money(X)}</b>
     <div class="hero-split"><div>Já caiu<b>${money(Y)}</b></div><div>Falta cair<b>${money(Z)}</b></div></div>
     <div class="hero-bar"><span style="width:${pct}%"></span></div></div>
-    <div class="muted" style="font-size:12px;margin-top:6px">Conta pela data do pagamento. O que você trabalhou no mês fica na Agenda e nos Relatórios.</div>`;
-  if (atrasAnt.length) html += `<div class="h">Atrasados de meses anteriores<span class="sub" style="color:var(--ambar)">${money(sm(atrasAnt))}</span></div><div class="card" style="border-color:#F0D49A">${atrasAnt.map(linha).join('')}</div>`;
-  html += `<div class="h">Pagamentos de ${mesN}<span class="sub">${doMes.length}</span></div>` + (doMes.length ? `<div class="card">${doMes.map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento com data em ${mesN}.</div>`);
+    <div class="muted" style="font-size:12px;margin-top:6px">Plantões feitos em ${mesN}, iguais aos da agenda. Cada um mostra a data do pagamento.</div>`;
+  if (atrasAnt.length) html += `<div class="h">Atrasados de meses anteriores<span class="sub" style="color:var(--verm)">${money(sm(atrasAnt))}</span></div><div class="flist">${atrasAnt.map(linha).join('')}</div>`;
+  html += `<div class="h">Plantões de ${mesN}<span class="sub">${caiu.length} de ${doMes.length} pagos</span></div>` + (doMes.length ? `<div class="flist">${doMes.map(linha).join('')}</div>` : `<div class="vazio">Nenhum plantão em ${mesN}.</div>`);
   const notaPend = sortBy(S.plantoes.filter(p => !p.pago && !p.notaSolicitada && loc(p.localId).precisaNota && p.data <= HOJE), p => p.data);
   if (notaPend.length) html += `<div class="h">Solicitar pagamento<span class="sub">emitir nota</span></div><div class="card">${notaPend.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><div class="g"><b>${esc(l.nome)}</b><span class="mono">${rotulo(p)} · ${money(total(p))}</span></div><button class="btn sm" data-act="solicitar" data-id="${p.id}">Solicitado hoje</button></div>`; }).join('')}</div>`;
-  const porLocal = locaisOrd().map(l => ({ l, itens: aberto.filter(r => r.localId === l.id) })).filter(x => x.itens.length);
-  html += `<div class="h">Em aberto por local<span class="sub">${money(sm(aberto))} · todos os meses</span></div>`;
-  html += porLocal.length ? porLocal.map(({l, itens}) => {
-    const at = itens.filter(r => r.prev && r.prev < HOJE), open = S.finOpen[l.id];
-    return `<div class="card" style="border-left:4px solid ${l.cor}">
-      <button class="loc-h" data-act="finToggle" data-id="${l.id}"><div class="g"><b>${esc(l.nome)}</b><div class="muted">${itens.length} em aberto${at.length ? ` · <span style="color:var(--ambar)">${at.length} atrasado${at.length > 1 ? 's' : ''}</span>` : ''}</div></div><div class="mono" style="font-weight:600;font-size:16px">${money(sm(itens))}</div>${ic(open ? 'up' : 'dn')}</button>
-      ${open ? `<div style="margin-top:8px">${sortBy(itens, r => r.prev || r.data || '').map(linha).join('')}</div>` : ''}
-      <div class="btns" style="margin-top:10px"><button class="btn sm p" data-act="pagarLocal" data-id="${l.id}">${ic('ok')}Marcar como pagos</button></div></div>`;
-  }).join('') : `<div class="vazio">Nada em aberto. Tudo recebido.</div>`;
   return html;
 }
 
@@ -1712,8 +1721,9 @@ async function moverPlantao(id, dia) {
 /* ---------- Deslizar o calendário para trocar de mês ---------- */
 let swp = null;
 document.addEventListener('touchstart', e => {
-  const cal = e.target.closest && e.target.closest('.cal');
-  swp = cal && S.view === 'agenda' && S.modo === 'mes' && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+  const el = e.target.closest && e.target.closest(S.view === 'agenda' ? '.cal' : '#app');
+  const pode = el && e.touches.length === 1 && !e.target.closest('.ov,.filtros,.qadd,.tbw,input,select,textarea') && ((S.view === 'agenda' && S.modo === 'mes') || S.view === 'financeiro');
+  swp = pode ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
 }, { passive: true });
 document.addEventListener('touchend', e => {
   if (!swp) return;
@@ -1722,6 +1732,7 @@ document.addEventListener('touchend', e => {
   const t = e.changedTouches[0], dx = t.clientX - s0.x, dy = t.clientY - s0.y;
   if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - s0.t > 800) return;
   S.noClick = Date.now();
+  if (S.view === 'financeiro') { S.finMes = addM(S.finMes, dx < 0 ? 1 : -1); render(); const h = document.querySelector('#app'); if (h) { h.classList.remove('sw-l', 'sw-r'); void h.offsetWidth; h.classList.add(dx < 0 ? 'sw-l' : 'sw-r'); } return; }
   mudaMes(dx < 0 ? 1 : -1);
 });
 function mudaMes(n) {

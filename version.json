@@ -1,4 +1,4 @@
 {
-  "versao": "1.4",
-  "notas": "O aviso de atualização agora fica na tela até você tocar em Ok, e depois de atualizar mostra o que mudou."
+  "versao": "1.5",
+  "notas": "Financeiro mostra os plantões do mês iguais aos da agenda: pagos ficam verdes, atrasados vermelhos com “!”. Dá para trocar o mês deslizando o dedo."
 }
