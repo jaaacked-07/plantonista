@@ -26,7 +26,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--papel);color:var(--tinta);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-body{min-height:100vh;overscroll-behavior-y:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.2px}
@@ -34,7 +35,7 @@ input,select,textarea{font:inherit;color:inherit}
 svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 
 /* ---------- Estrutura ---------- */
-#app{max-width:760px;margin:0 auto;padding:calc(var(--st) + 14px) 16px calc(var(--sb) + 96px)}
+#app{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:calc(var(--st) + 14px) max(16px, calc((100vw - 760px) / 2)) calc(var(--sb) + 96px)}
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:4px 0 18px}
 .titulo{font-family:var(--mao);color:var(--roxo);font-size:46px;line-height:1;font-weight:400}
 .titulo small{font-family:var(--mono);color:var(--cinza);font-size:14px;margin-left:8px;letter-spacing:0}
@@ -215,14 +216,27 @@ input,select,textarea{font-size:16px}
 .pr:last-child{border-bottom:0}
 .pr .d{color:var(--cinza)}.pr .v{text-align:right;font-weight:600}
 .pr .s{text-align:right;font-size:12px;display:flex;align-items:center;justify-content:flex-end;gap:4px}
-.pr .v{color:var(--tinta)}.pr .s{color:var(--cinza)}
-.pr.atrasado .s{color:var(--tinta);font-weight:600}
+.pr .v{color:var(--tinta)}.pr .s{color:#A86400;font-weight:500}
+.pr.pago .s{color:var(--verde)}
+.pr.atrasado .s{color:var(--verm);font-weight:600}
 .gcard{background:var(--branco);border:1px solid var(--linha);border-left:5px solid var(--lc);border-radius:4px;padding:12px 14px}
 .gcard+.gcard{margin-top:8px}
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .gh>b{font-weight:600;font-size:15.5px;color:var(--tinta)}
-.gh>b .tagp{vertical-align:2px;margin-left:4px}
+.gh>b .tagp{vertical-align:2px}
+.tagp.tagg{font-size:13px;line-height:20px;padding:0 7px}
+.gloc{font-size:12.5px;font-weight:500;color:var(--cinza);margin-left:4px}
 .gh>span{font-size:12.5px;color:var(--cinza)}
+.tut{position:fixed;inset:0;z-index:95;background:rgba(23,20,31,.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fd .2s}
+.tut-c{background:var(--papel);border-radius:10px;padding:22px 20px 18px;max-width:380px;width:100%;text-align:center;animation:up .25s}
+.tut-i{width:64px;height:64px;border-radius:50%;background:var(--roxo-cl);color:var(--roxo);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.tut-i svg{width:30px;height:30px}
+.tut-c h3{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:6px}
+.tut-c p{font-size:14.5px;color:var(--cinza);margin-bottom:16px}
+.tut-c p b{color:var(--tinta)}
+.tut-dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--linha)}
+.tut-dots i.on{background:var(--roxo);width:18px;border-radius:4px}
 .det{border:1px solid var(--linha);border-radius:4px;background:var(--branco);padding:10px 12px;margin-bottom:12px}
 .det summary{font-size:14px;color:var(--cinza);cursor:pointer}
 .det summary span{color:var(--tinta);font-family:var(--mono)}
@@ -365,9 +379,9 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.9';
+const VERSAO = '2.0';
 let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
-const NOTAS_VERSAO = 'Relatórios mais limpos: tudo pela data do plantão, locais e especialidades abrem ao tocar, menos cores. Fonte dos títulos mais legível e barra inferior fixa.';
+const NOTAS_VERSAO = 'Barra inferior presa de vez, tutorial para quem entra pela primeira vez, nome no PDF e especialidade em destaque nos relatórios.';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -723,17 +737,48 @@ function render() {
   nav.innerHTML = it('agenda','cal','Agenda') + it('financeiro','din','Financeiro') + `<button class="mais" data-act="novo" aria-label="Adicionar">${ic('plus')}</button>` + it('relatorios','rel','Relatórios') + it('ajustes','aj','Ajustes');
   const v = { agenda:vAgenda, financeiro:vFin, relatorios:vRel, ajustes:vAjustes }[S.view] || vAgenda;
   if (S.view === 'relatorios') carregaPDF().catch(() => {});
-  const y = window.scrollY;
+  const sc = $('#app'), y = sc.scrollTop;
   $('#app').innerHTML = v();
-  window.scrollTo(0, y);
+  sc.scrollTop = y;
   badge();
+  if (S.loaded.cfg && S.loaded.locais && S.loaded.plantoes && !S.cfg.tutorialVisto && !S.locais.length && !S.plantoes.length && !document.querySelector('.tut')) tutorial();
+}
+/* ---------- Tutorial da primeira vez ---------- */
+const TUT = [
+  ['cal', 'Bem-vindo(a) ao Plantonista', 'Sua agenda de plantões que também cuida do seu dinheiro. Veja em 1 minuto como usar.'],
+  ['aj', 'Cadastre seus locais', 'Em <b>Ajustes</b>, crie os locais onde você trabalha (com o dia em que cada um paga) e os <b>modelos de plantão</b>, por exemplo “UPA 12h CM”.'],
+  ['plus', 'Adicione plantões', 'Toque no <b>+</b> ou escolha um dia no calendário. Com os modelos, é um toque só. Dá para repetir e montar o mês inteiro.'],
+  ['cal', 'Mexa na agenda', 'Toque no plantão para <b>editar</b>. Segure e arraste para <b>mudar o dia</b>. Deslize o calendário para os lados para <b>trocar de mês</b>.'],
+  ['din', 'Controle o dinheiro', 'No <b>Financeiro</b>, toque no <b>✓</b> quando o pagamento cair. Pagos ficam verdes; atrasados, vermelhos com “!”.'],
+  ['rel', 'Relatórios e PDF', 'Veja quanto recebeu e quanto falta por local e por especialidade, e gere o <b>PDF</b> para guardar ou enviar.']
+];
+function tutorial() {
+  const d = document.createElement('div'); d.className = 'tut';
+  let i = 0;
+  const fim = nome => { S.cfg.tutorialVisto = true; if (nome) S.cfg.nome = nome; saveCfg(); d.remove(); render(); };
+  const passoNome = () => {
+    d.innerHTML = `<form class="tut-c"><div class="tut-i">${ic('ed')}</div><h3>Como você quer ser chamado(a)?</h3><p>O nome aparece na agenda e nos relatórios em PDF. Você pode mudar depois em Ajustes.</p>
+      <input class="in" name="nome" placeholder="Seu nome" autocapitalize="words" autocomplete="name" required style="margin-bottom:12px"><button class="btn p w" type="submit">Começar</button></form>`;
+    const f = d.querySelector('form'); setTimeout(() => f.nome.focus(), 100);
+    f.onsubmit = e => { e.preventDefault(); fim(f.nome.value.trim()); };
+  };
+  const passo = () => {
+    const [icn, t, txt] = TUT[i];
+    d.innerHTML = `<div class="tut-c"><div class="tut-i">${ic(icn)}</div><h3>${t}</h3><p>${txt}</p>
+      <div class="tut-dots">${TUT.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="btns"><button class="btn g" data-t="pular">Pular</button><button class="btn p" data-t="prox">${i === TUT.length - 1 ? 'Continuar' : 'Próximo'}</button></div></div>`;
+    d.querySelector('[data-t=pular]').onclick = passoNome;
+    d.querySelector('[data-t=prox]').onclick = () => { i++; i < TUT.length ? passo() : passoNome(); };
+  };
+  passo();
+  document.body.appendChild(d);
 }
 function badge() {
   if (!navigator.setAppBadge) return;
   const lim = addD(HOJE, 7), n = S.plantoes.filter(p => p.data >= HOJE && p.data <= lim).length;
   (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
 }
-function go(view) { if (view === 'financeiro' && S.view === 'agenda') S.finMes = S.mes; if (view === 'relatorios' && S.view !== 'relatorios') { S.rel.mes = HOJE.slice(0, 7); S.rel.ano = HOJE.slice(0, 4); } S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
+function go(view) { if (view === 'financeiro' && S.view === 'agenda') S.finMes = S.mes; if (view === 'relatorios' && S.view !== 'relatorios') { S.rel.mes = HOJE.slice(0, 7); S.rel.ano = HOJE.slice(0, 4); } S.view = view; location.hash = view; $('#app').scrollTop = 0; render(); }
 
 /* ---------- Cartão de plantão ---------- */
 function cardP(p, o = {}) {
@@ -947,7 +992,7 @@ function listaGrupo(x, mostraTag, recolhe, pref) {
     return `<button class="pr ${st}" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><span class="d mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data) + ' ' + SEMC[dow(r.data)]}</span><span class="t">${tg ? `<span class="tagp" style="--c:${corTag(tg)}">${esc(tg)}</span>` : ''}${r.dividido ? `<span class="muted">÷ ${esc(r.colega || 'colega')}</span>` : ''}</span><span class="v mono">${money(ef(r))}</span><span class="s">${st === 'pago' ? '✓ pago' : st === 'atrasado' ? '! atrasado' : 'em aberto'}</span></button>`;
   }).join('');
   const k = (pref || '') + x.nome, ab = !recolhe || (S.espOpen || {})[k];
-  return `<div class="glist" style="--lc:${x.lcor || x.cor}">${recolhe ? `<button class="gtog" data-act="espTog" data-id="${esc(k)}">` : '<div>'}<div class="gh"><b>${esc(x.lnome || x.nome)}${x.tag ? ` <span class="tagp" style="--c:${x.cor}">${esc(x.tag)}</span>` : ''}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${recolhe ? ' ' + ic(ab ? 'up' : 'dn') : ''}</span></div>
+  return `<div class="glist" style="--lc:${x.lcor || x.cor}">${recolhe ? `<button class="gtog" data-act="espTog" data-id="${esc(k)}">` : '<div>'}<div class="gh"><b>${x.tag ? `<span class="tagp tagg" style="--c:${x.cor}">${esc(x.tag)}</span> <small class="gloc">${esc(x.lnome)}</small>` : esc(x.lnome || x.nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${recolhe ? ' ' + ic(ab ? 'up' : 'dn') : ''}</span></div>
     <div class="gsum"><span><b>${rotTot()}: ${money(g.tot)}</b></span><span class="cr">Recebido: ${money(g.rec)}</span><span class="ca">Em aberto: ${money(g.ab)}</span></div>${recolhe ? '</button>' : '</div>'}
     ${ab ? `<div class="prs">${linhas}</div>` : ''}</div>`;
 }
@@ -1056,7 +1101,7 @@ async function gerarPDF() {
   doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(24); doc.setTextColor(...ROXO); doc.text('Plantonista', M, 20);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt + '', M, 27);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...CINZA);
-  doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE) + ' às ' + horaGer], W - M, 15, { align: 'right' });
+  doc.text([lnome, 'Profissional: ' + nomeUsuario() + (nomeUsuario() !== S.user ? ' (' + S.user + ')' : ''), 'Gerado em ' + ddmmaa(HOJE) + ' às ' + horaGer], W - M, 15, { align: 'right' });
   doc.setDrawColor(...ROXO); doc.setLineWidth(0.8); doc.line(M, 31, W - M, 31);
   const base = { theme: 'grid', margin: { left: M, right: M }, styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.8, textColor: TINTA, lineColor: [227, 222, 210], lineWidth: 0.2 }, headStyles: { fillColor: [239, 232, 252], textColor: [78, 27, 163], fontStyle: 'bold' } };
   let y = 36;
@@ -1090,7 +1135,7 @@ async function gerarPDF() {
   const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
   const listasPDF = (grupos, mostraTag) => grupos.forEach(x => {
     if (y > 258) { doc.addPage(); y = 18; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...TINTA); doc.text(x.nome.replace(' · ', ' - '), M, y);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...TINTA); doc.text(x.tag ? `${x.tag} - ${x.lnome}` : x.nome, M, y);
     doc.setFontSize(8.5); const t1 = `${rotTot()}: ${money(x.g.tot)}`, t2 = `Recebido: ${money(x.g.rec)}`, t3 = `Em aberto: ${money(x.g.ab)}`;
     let xx = M; doc.text(t1, xx, y + 4.5); xx += doc.getTextWidth(t1) + 6; doc.setTextColor(31, 122, 77); doc.text(t2, xx, y + 4.5); xx += doc.getTextWidth(t2) + 6; doc.setTextColor(176, 106, 0); doc.text(t3, xx, y + 4.5);
     y += 6;
@@ -1100,7 +1145,7 @@ async function gerarPDF() {
     y -= 3;
   });
   if (gl.length) { secao('Por local'); tabela(cab('Local'), gl.map(linhaG), { columnStyles: corCols }); listasPDF(gl, true); y += 3; }
-  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols }); listasPDF(ge, false); y += 3; }
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Especialidade - local'), ge.map(x => linhaG({ ...x, nome: x.tag ? `${x.tag} - ${x.lnome}` : x.nome })), { columnStyles: corCols }); listasPDF(ge, false); y += 3; }
   if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
   if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
   const divs = ps.filter(p => p.dividido);

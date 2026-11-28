@@ -1,4 +1,4 @@
 {
-  "versao": "1.9",
-  "notas": "Relatórios mais limpos: tudo pela data do plantão, locais e especialidades abrem ao tocar, menos cores. Fonte dos títulos mais legível e barra inferior fixa."
+  "versao": "2.0",
+  "notas": "Barra inferior presa de vez, tutorial para quem entra pela primeira vez, nome no PDF e especialidade em destaque nos relatórios."
 }
