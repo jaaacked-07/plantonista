@@ -1,4 +1,4 @@
 {
-  "versao": "1.7",
-  "notas": "Relatórios: por local e por especialidade voltam a listar cada plantão, com pago em verde, em aberto em amarelo e atrasado em vermelho."
+  "versao": "1.8",
+  "notas": "Gráfico com o valor recebido e em aberto de cada local; por especialidade abre a lista ao tocar; PDF com data e hora de geração."
 }

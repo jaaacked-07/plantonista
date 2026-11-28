@@ -206,6 +206,8 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .gsum{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;margin:4px 0 6px}
 .gsum .cr{color:var(--verde);font-weight:600}.gsum .ca{color:#A86400;font-weight:600}
 .prs{border-top:1px solid var(--linha2)}
+.gtog{display:block;width:100%;text-align:left}
+.gh svg{width:16px;height:16px;vertical-align:-3px;color:var(--cinza)}
 .pr{display:grid;grid-template-columns:78px 1fr auto 86px;align-items:center;gap:6px;width:100%;text-align:left;padding:7px 0;border-bottom:1px solid var(--linha2);font-size:13px}
 .pr:last-child{border-bottom:0}
 .pr .d{color:var(--cinza)}.pr .v{text-align:right;font-weight:600}
@@ -357,9 +359,9 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.7';
+const VERSAO = '1.8';
 let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
-const NOTAS_VERSAO = 'Relatórios: por local e por especialidade voltam a listar cada plantão, com pago em verde, em aberto em amarelo e atrasado em vermelho.';
+const NOTAS_VERSAO = 'Gráfico com o valor recebido e em aberto de cada local; por especialidade abre a lista ao tocar; PDF com data e hora de geração.';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -939,14 +941,15 @@ function grupoRel(items) {
 }
 const triHTML = (g, big) => `<div class="tri ${big ? 'big' : ''}"><div class="t1"><span>${rotTot()}</span><b>${money(g.tot)}</b></div><div class="t2"><span>Recebido</span><b>${money(g.rec)}</b></div><div class="t3"><span>Em aberto</span><b>${money(g.ab)}</b></div></div>`;
 const cardGrupo = (nome, cor, g, lcor) => `<div class="gcard" style="--c:${cor};--lc:${lcor || cor}"><div class="gh"><b>${esc(nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${g.atr ? ` · <b style="color:var(--verm)">${money(g.atr)} atrasado</b>` : ''}</span></div>${triHTML(g)}<div class="rbar"><span style="width:${g.tot ? Math.round(g.rec / g.tot * 100) : 0}%"></span></div></div>`;
-function listaGrupo(x, mostraTag) {
+function listaGrupo(x, mostraTag, recolhe) {
   const g = x.g, linhas = sortBy(x.it, r => r.sal ? r.ref + '-99' : r.data + r.inicio).map(r => {
     const st = status(r), tg = !r.sal && mostraTag ? tagP(r) : '';
     return `<button class="pr ${st}" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><span class="d mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data) + ' ' + SEMC[dow(r.data)]}</span><span class="t">${tg ? `<span class="tagp" style="--c:${corTag(tg)}">${esc(tg)}</span>` : ''}${r.dividido ? `<span class="muted">÷ ${esc(r.colega || 'colega')}</span>` : ''}</span><span class="v mono">${money(ef(r))}</span><span class="s">${st === 'pago' ? '✓ pago' : st === 'atrasado' ? '<i class="exc">!</i> atrasado' : 'em aberto'}</span></button>`;
   }).join('');
-  return `<div class="glist" style="--c:${x.cor};--lc:${x.lcor || x.cor}"><div class="gh"><b>${esc(x.nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}</span></div>
-    <div class="gsum"><span><b>${rotTot()}: ${money(g.tot)}</b></span><span class="cr">Recebido: ${money(g.rec)}</span><span class="ca">Em aberto: ${money(g.ab)}</span></div>
-    <div class="prs">${linhas}</div></div>`;
+  const k = x.nome, ab = !recolhe || (S.espOpen || {})[k];
+  return `<div class="glist" style="--c:${x.cor};--lc:${x.lcor || x.cor}">${recolhe ? `<button class="gtog" data-act="espTog" data-id="${esc(k)}">` : '<div>'}<div class="gh"><b>${esc(x.nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${recolhe ? ' ' + ic(ab ? 'up' : 'dn') : ''}</span></div>
+    <div class="gsum"><span><b>${rotTot()}: ${money(g.tot)}</b></span><span class="cr">Recebido: ${money(g.rec)}</span><span class="ca">Em aberto: ${money(g.ab)}</span></div>${recolhe ? '</button>' : '</div>'}
+    ${ab ? `<div class="prs">${linhas}</div>` : ''}</div>`;
 }
 function gruposLocal(ps, sals) {
   const ids = [...new Set([...ps, ...sals].map(r => r.localId))];
@@ -960,13 +963,14 @@ function gruposEsp(ps) {
 function chartPeriodo(ps, sals, paraPDF) {
   const VERDE = '#1F7A4D', ABERTO = '#E9B44C', F = paraPDF ? 'Helvetica, Arial, sans-serif' : 'Inter, sans-serif';
   const gl = gruposLocal(ps, sals);
-  const W = 600, rh = 50, H1 = gl.length * rh + 6;
+  const W = 600, rh = 72, H1 = gl.length * rh + 6;
   const max = Math.max(1, ...gl.map(x => x.g.tot));
   let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="img" aria-label="Recebido e em aberto por local">`;
   gl.forEach((x, i) => {
     const y = i * rh + 4, wr = (x.g.rec / max) * W, wa = (x.g.ab / max) * W;
     s += `<rect x="0" y="${y}" width="5" height="16" fill="${x.cor}"/><text x="11" y="${y + 13}" font-family="${F}" font-size="17" font-weight="600" fill="#17141F">${esc(x.nome)}</text><text x="${W}" y="${y + 13}" text-anchor="end" font-family="${F}" font-size="16" font-weight="600" fill="#17141F">${money(x.g.tot)}</text>`;
     s += `<rect x="0" y="${y + 22}" width="${W}" height="16" fill="#F1EEE7"/><rect x="0" y="${y + 22}" width="${wr}" height="16" fill="${VERDE}"/><rect x="${wr}" y="${y + 22}" width="${wa}" height="16" fill="${ABERTO}"/>`;
+    s += `<text x="0" y="${y + 58}" font-family="${F}" font-size="14" font-weight="600" fill="${VERDE}">Recebido ${money(x.g.rec)}</text><text x="${W}" y="${y + 58}" text-anchor="end" font-family="${F}" font-size="14" font-weight="600" fill="#B06A00">Em aberto ${money(x.g.ab)}</text>`;
   });
   s += '</svg>';
   let meses = [];
@@ -1021,7 +1025,7 @@ function vRel() {
   if (ps.length || sals.length) html += `<div class="h">Recebido × em aberto</div><div class="card chart">${chartPeriodo(ps, sals)}</div>`;
   const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
   if (gl.length) html += `<div class="h">Por local</div>` + gl.map(x => listaGrupo(x, true)).join('');
-  if (ge.length > 1 || (ge[0] && ge[0].tag)) html += `<div class="h">Por especialidade</div>` + ge.map(x => listaGrupo(x, false)).join('');
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) html += `<div class="h">Por especialidade</div>` + ge.map(x => listaGrupo(x, false, true)).join('');
   const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
   if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
   if (R.tipo === 'tudo' || R.tipo === 'ano') {
@@ -1046,12 +1050,13 @@ async function gerarPDF() {
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
   const atr = sortBy([...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE), r => r.prev);
   const lnome = R.local ? loc(R.local).nome : 'Todos os locais';
+  const agora = new Date(), horaGer = `${p2(agora.getHours())}:${p2(agora.getMinutes())}`;
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const ROXO = [107, 43, 214], TINTA = [23, 20, 31], CINZA = [91, 86, 112], W = 210, M = 14;
   doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(24); doc.setTextColor(...ROXO); doc.text('Plantonista', M, 20);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt + (R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo) ? ' (pela data do pagamento)' : ''), M, 27);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...CINZA);
-  doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE)], W - M, 15, { align: 'right' });
+  doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE) + ' às ' + horaGer], W - M, 15, { align: 'right' });
   doc.setDrawColor(...ROXO); doc.setLineWidth(0.8); doc.line(M, 31, W - M, 31);
   const base = { theme: 'grid', margin: { left: M, right: M }, styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.8, textColor: TINTA, lineColor: [227, 222, 210], lineWidth: 0.2 }, headStyles: { fillColor: [239, 232, 252], textColor: [78, 27, 163], fontStyle: 'bold' } };
   let y = 36;
@@ -1084,7 +1089,12 @@ async function gerarPDF() {
   const cab = (a) => [a, 'Plantões', 'Horas', rotTot(), 'Recebido', 'Em aberto'];
   const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
   if (gl.length) { secao('Por local'); tabela(cab('Local'), gl.map(linhaG), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(gl[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); }
-  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(ge[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); }
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(ge[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); 
+    ge.forEach(x => { if (y > 262) { doc.addPage(); y = 18; } doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...hexRgb(x.cor)); doc.text(`${x.nome.replace(' · ', ' - ')}  ·  ${rotTot()}: ${money(x.g.tot)}`, M, y); y += 1.5;
+      const it = sortBy(x.it, r => r.data + r.inicio);
+      tabela(['Data', 'Horário', 'Valor', 'Situação'], it.map(r => { const st = status(r); return [ddmmaa(r.data) + ' ' + SEMC[dow(r.data)], r.inicio + '–' + r.fim, money(ef(r)), st === 'pago' ? 'Pago ' + ddmmaa(r.dataPago) : st === 'atrasado' ? 'Atrasado (era ' + ddmmaa(r.prev) + ')' : 'Em aberto' + (r.prev ? ' · pgto ' + ddmmaa(r.prev) : '')]; }),
+        { styles: { ...base.styles, fontSize: 8 }, columnStyles: { 2: dir }, didParseCell: d => { if (d.section === 'body' && (d.column.index === 2 || d.column.index === 3)) { const st = status(it[d.row.index]); d.cell.styles.textColor = st === 'pago' ? [31, 122, 77] : st === 'atrasado' ? [180, 35, 24] : [176, 106, 0]; d.cell.styles.fontStyle = 'bold'; } } }); y -= 3; });
+    y += 3; }
   if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
   if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
   const divs = ps.filter(p => p.dividido);
@@ -1093,7 +1103,7 @@ async function gerarPDF() {
   tabela(['Data', 'Local', 'Horário', 'Horas', 'Valor', 'Pagamento', 'Obs.'], ps.map(p => [ddmmaa(p.data) + ' ' + SEMC[dow(p.data)], loc(p.localId).nome + (tagP(p) ? ' · ' + tagP(p) : '') + (p.importante ? ' ★' : ''), p.inicio + '–' + p.fim, hh(dur(p)), money(p.pago ? p.valorPago : total(p)), p.pago ? 'Pago ' + ddmmaa(p.dataPago) : (p.prev ? (status(p) === 'atrasado' ? 'Atrasado · ' : 'Previsto ') + ddmmaa(p.prev) : '—'), [p.dividido ? `Dividido com ${p.colega || 'colega'} (-${money(desconto(p))})` : '', p.extraDesc, p.nota].filter(Boolean).join(' · ')]),
     { columnStyles: { 3: dir, 4: dir, 6: { cellWidth: 40 } }, didParseCell: d => { if (d.section === 'body' && d.column.index === 1) { const p = ps[d.row.index]; d.cell.styles.textColor = hexRgb(loc(p.localId).cor); d.cell.styles.fontStyle = 'bold'; } } });
   const n = doc.getNumberOfPages();
-  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...CINZA); doc.text(`Plantonista · página ${i} de ${n}`, W / 2, 290, { align: 'center' }); }
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...CINZA); doc.text(`Informações referentes a ${ddmmaa(HOJE)} às ${horaGer} · Plantonista · página ${i} de ${n}`, W / 2, 290, { align: 'center' }); }
   const nome = `plantonista-${P.txt.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
   const blob = doc.output('blob');
   const file = new File([blob], nome, { type: 'application/pdf' });
@@ -1731,6 +1741,7 @@ document.addEventListener('click', async e => {
     case 'solicitar': { const p = S.plantoes.find(x => x.id === id); await put('plantoes', { ...p, notaSolicitada: HOJE }); return toast('Solicitação registrada'); }
     case 'relTipo': { const ant = S.rel.tipo; S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) { S.rel.local = locaisOrd()[0]?.id || ''; S.rel.autoLocal = true; S.rel.ciclo = ''; } if (ant === 'ciclo' && S.rel.tipo !== 'ciclo' && S.rel.autoLocal) { S.rel.local = ''; S.rel.autoLocal = false; } return render(); }
     case 'pdf': return gerarPDF();
+    case 'espTog': S.espOpen = S.espOpen || {}; S.espOpen[id] = !S.espOpen[id]; return render();
     case 'relBase': S.rel.base = a.dataset.v; return render();
     case 'atualizar': return atualizarApp();
     case 'csvRel': { const { ps, P } = dadosRel(); return baixar(`plantonista-${P.txt.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`, csvDe(ps), 'text/csv;charset=utf-8'); }
