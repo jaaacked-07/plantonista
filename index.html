@@ -167,6 +167,10 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .upd p{font-size:13px;color:#D9D3E8;margin:4px 0 10px}
 .upd .btns .btn{height:36px}
 .upd .btn:not(.p){background:transparent;color:#fff;border-color:#4A4459}
+.ola{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--roxo-esc);margin:2px 0 6px}
+.cal.sw-l{animation:swl .22s ease-out}.cal.sw-r{animation:swr .22s ease-out}
+@keyframes swl{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes swr{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -306,7 +310,7 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.2';
+const VERSAO = '1.3';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -561,6 +565,7 @@ const hashN = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charC
 const corTag = t => ((S.cfg.tagCores || {})[t]) || CORES[(hashN(t) + 3) % CORES.length][0];
 const corP = p => { const t = tagP(p); return t ? corTag(t) : loc(p.localId).cor; };
 const tagsUsadas = () => [...new Set([...S.modelos.map(tagModelo), ...S.plantoes.map(tagP)].filter(Boolean))].sort();
+const nomeUsuario = () => (S.cfg.nome && S.cfg.nome.trim()) || S.user;
 const priv = () => !!S.cfg.privacidade;
 const mv = v => priv() ? 'R$ •••' : money(v);
 
@@ -696,7 +701,7 @@ function cardP(p, o = {}) {
    ========================================================= */
 function vAgenda() {
   const ym = S.mes, [y, m] = ym.split('-').map(Number);
-  const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${y}</small></div>
+  const top = `<div class="ola">Olá, ${esc(nomeUsuario())}!</div><div class="top"><div class="titulo">${nomeMes(ym)}<small>${y}</small></div>
     <div class="top-acts">
       <button class="ib" data-act="priv" aria-label="Privacidade">${ic(priv() ? 'eyeoff' : 'eye')}</button>
       <button class="ib" data-act="modo" aria-label="Alternar visão">${ic(S.modo === 'mes' ? 'list' : 'cal')}</button>
@@ -1034,7 +1039,8 @@ function vAjustes() {
 
   <div class="h">Conta</div>
   <div class="card">
-    <div class="sw"><div class="t">Usuário<span class="muted mono">${esc(S.user)}</span></div><button class="btn sm" data-act="senha">Trocar senha</button></div>
+    <div class="sw"><div class="t">Seu nome<span class="muted">Aparece no “Olá” da agenda.</span></div><input class="in" style="width:170px" data-cfgnome value="${esc(S.cfg.nome || '')}" placeholder="${esc(S.user)}" autocapitalize="words"></div>
+    <div class="sw"><div class="t">Usuário de login<span class="muted mono">${esc(S.user)}</span></div><button class="btn sm" data-act="senha">Trocar senha</button></div>
     <div class="sw"><div class="t">Sair deste aparelho</div><button class="btn sm d" data-act="sair">${ic('sair')}Sair</button></div>
   </div>
   <p class="muted" style="text-align:center;margin-top:20px"><span style="font-family:var(--mao);color:var(--roxo);font-size:20px">Plantonista</span> · versão ${VERSAO}</p>${Object.keys(pendLoad()).length ? `<p class="muted" style="text-align:center;margin-top:6px">${Object.keys(pendLoad()).length} alteração(ões) aguardando internet para ir à nuvem · <button class="link" data-act="enviarAgora">Enviar agora</button></p>` : ''}
@@ -1581,8 +1587,8 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'novo': return menuNovo();
     case 'dia': S.sel = a.dataset.d; if (a.dataset.d.slice(0,7) !== S.mes) S.mes = a.dataset.d.slice(0,7); return render();
-    case 'mesAnt': S.mes = addM(S.mes, -1); S.sel = S.mes === HOJE.slice(0,7) ? HOJE : `${S.mes}-01`; return render();
-    case 'mesProx': S.mes = addM(S.mes, 1); S.sel = S.mes === HOJE.slice(0,7) ? HOJE : `${S.mes}-01`; return render();
+    case 'mesAnt': return mudaMes(-1);
+    case 'mesProx': return mudaMes(1);
     case 'hoje': S.mes = HOJE.slice(0,7); S.sel = HOJE; return render();
     case 'modo': S.modo = S.modo === 'mes' ? 'lista' : 'mes'; return render();
     case 'priv': S.cfg.privacidade = !S.cfg.privacidade; saveCfg(); return render();
@@ -1646,6 +1652,7 @@ document.addEventListener('change', e => {
   if (!S.uid || t.closest('.ov')) return;
   if (t.dataset.rel) { S.rel[t.dataset.rel] = t.value; if (t.dataset.rel === 'local') { S.rel.ciclo = ''; S.rel.autoLocal = false; } return render(); }
   if (t.dataset.tagcustom) { S.cfg.tagCores = { ...(S.cfg.tagCores || {}), [t.dataset.tagcustom]: t.value }; saveCfg(); return render(); }
+  if (t.hasAttribute('data-cfgnome')) { S.cfg.nome = t.value.trim(); saveCfg(); return toast('Nome salvo'); }
   if (t.dataset.cfgl) { S.cfg.lembretes[t.dataset.cfgl] = t.value; saveCfg(); return toast('Lembrete salvo'); }
   if (t.name === 'lAtivo') { S.cfg.lembretes.ativo = t.checked; saveCfg(); return; }
   if (t.name === 'lPag') { S.cfg.lembretes.pag = t.checked; saveCfg(); return; }
@@ -1699,6 +1706,26 @@ async function moverPlantao(id, dia) {
   await put('plantoes', { ...p, data: dia, prev: !p.pago && auto ? prevPag(l, dia) : p.prev });
   S.sel = dia; render();
   toast(`Movido para ${ddmm(dia)}`, 'Desfazer', () => put('plantoes', antes));
+}
+/* ---------- Deslizar o calendário para trocar de mês ---------- */
+let swp = null;
+document.addEventListener('touchstart', e => {
+  const cal = e.target.closest && e.target.closest('.cal');
+  swp = cal && S.view === 'agenda' && S.modo === 'mes' && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!swp) return;
+  const s0 = swp; swp = null;
+  if (drag && drag.on) return; // estava arrastando um plantão
+  const t = e.changedTouches[0], dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - s0.t > 800) return;
+  S.noClick = Date.now();
+  mudaMes(dx < 0 ? 1 : -1);
+});
+function mudaMes(n) {
+  S.mes = addM(S.mes, n); S.sel = S.mes === HOJE.slice(0,7) ? HOJE : `${S.mes}-01`;
+  render();
+  const c = document.querySelector('.cal'); if (c) c.classList.add(n > 0 ? 'sw-l' : 'sw-r');
 }
 document.addEventListener('touchstart', dStart, { passive: true });
 document.addEventListener('touchmove', dMove, { passive: false });
