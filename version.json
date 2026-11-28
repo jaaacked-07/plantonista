@@ -1,4 +1,4 @@
 {
-  "versao": "1.5",
-  "notas": "Financeiro mostra os plantões do mês iguais aos da agenda: pagos ficam verdes, atrasados vermelhos com “!”. Dá para trocar o mês deslizando o dedo."
+  "versao": "1.6",
+  "notas": "Relatórios mais claros: Total, Recebido e Em aberto em destaque, gráfico do período escolhido (também no PDF) e um card por local e por especialidade."
 }

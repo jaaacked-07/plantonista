@@ -187,6 +187,25 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .fl.atrasado{background:var(--verm-cl);border-color:#F2C4BF;border-left-color:var(--lc)}
 .fl.atrasado .q,.fl.atrasado .v{color:var(--verm)}
 .exc{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--verm);color:#fff;font:700 10px/1 Inter,sans-serif;font-style:normal}
+.tri{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.tri .t1{grid-column:1/-1}
+.tri>div{border-radius:4px;padding:8px 10px;min-width:0}
+.tri span{display:block;font-family:var(--serif);font-size:13px;font-weight:600}
+.tri b{display:block;font-family:var(--mono);font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tri .t1{background:var(--roxo);color:#fff}.tri .t1 span{color:#E5DAFB}
+.tri .t2{background:var(--verde-cl);color:var(--verde)}
+.tri .t3{background:#FFF4DC;color:#8A5300}
+.tri.big{grid-template-columns:1fr 1fr;gap:8px}
+.tri.big .t1{grid-column:1/-1;padding:14px 16px}
+.tri.big .t1 b{font-size:28px}
+.tri.big>div{padding:12px 14px}.tri.big b{font-size:18px}.tri.big span{font-size:14.5px}
+.rbar{height:6px;background:#FFF4DC;border-radius:3px;margin-top:8px;overflow:hidden}
+.rbar span{display:block;height:100%;background:var(--verde)}
+.gcard{background:var(--branco);border:1px solid var(--linha);border-left:5px solid var(--lc);border-radius:4px;padding:12px 14px}
+.gcard+.gcard{margin-top:8px}
+.gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.gh>b{font-weight:600;font-size:15.5px;color:var(--c)}
+.gh>span{font-size:12.5px;color:var(--cinza)}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -326,9 +345,9 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.5';
+const VERSAO = '1.6';
 let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
-const NOTAS_VERSAO = 'Financeiro mostra os plantões do mês iguais aos da agenda: pagos ficam verdes, atrasados vermelhos com “!”. Dá para trocar o mês deslizando o dedo.';
+const NOTAS_VERSAO = 'Relatórios mais claros: Total, Recebido e Em aberto em destaque, gráfico do período escolhido (também no PDF) e um card por local e por especialidade.';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -694,7 +713,7 @@ function badge() {
   const lim = addD(HOJE, 7), n = S.plantoes.filter(p => p.data >= HOJE && p.data <= lim).length;
   (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
 }
-function go(view) { if (view === 'financeiro' && S.view === 'agenda') S.finMes = S.mes; if (view === 'relatorios' && S.view === 'agenda') S.rel.mes = S.mes; S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
+function go(view) { if (view === 'financeiro' && S.view === 'agenda') S.finMes = S.mes; if (view === 'relatorios' && S.view !== 'relatorios') { S.rel.mes = HOJE.slice(0, 7); S.rel.ano = HOJE.slice(0, 4); } S.view = view; location.hash = view; window.scrollTo(0, 0); render(); }
 
 /* ---------- Cartão de plantão ---------- */
 function cardP(p, o = {}) {
@@ -901,6 +920,61 @@ function linhasLocal(ps, sals) {
     return { l: loc(id), n: a.length, min, total: t, vh: min ? t / (min/60) : 0, aberto: all.filter(r => !r.pago).reduce((s, r) => s + total(r), 0), atr: all.filter(r => !r.pago && r.prev && r.prev < HOJE).reduce((s, r) => s + total(r), 0) };
   }), x => -x.total);
 }
+const rotTot = () => ({ mes:'Total do mês', ano:'Total do ano', ciclo:'Total do ciclo', periodo:'Total do período', tudo:'Total geral' })[S.rel.tipo] || 'Total';
+function grupoRel(items) {
+  const ps = items.filter(r => !r.sal), ab = items.filter(r => !r.pago);
+  return { n: ps.length, min: ps.reduce((x, p) => x + dur(p), 0), tot: items.reduce((x, r) => x + ef(r), 0), rec: items.filter(r => r.pago).reduce((x, r) => x + ef(r), 0), ab: ab.reduce((x, r) => x + total(r), 0), atr: ab.filter(r => r.prev && r.prev < HOJE).reduce((x, r) => x + total(r), 0) };
+}
+const triHTML = (g, big) => `<div class="tri ${big ? 'big' : ''}"><div class="t1"><span>${rotTot()}</span><b>${money(g.tot)}</b></div><div class="t2"><span>Recebido</span><b>${money(g.rec)}</b></div><div class="t3"><span>Em aberto</span><b>${money(g.ab)}</b></div></div>`;
+const cardGrupo = (nome, cor, g, lcor) => `<div class="gcard" style="--c:${cor};--lc:${lcor || cor}"><div class="gh"><b>${esc(nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${g.atr ? ` · <b style="color:var(--verm)">${money(g.atr)} atrasado</b>` : ''}</span></div>${triHTML(g)}<div class="rbar"><span style="width:${g.tot ? Math.round(g.rec / g.tot * 100) : 0}%"></span></div></div>`;
+function gruposLocal(ps, sals) {
+  const ids = [...new Set([...ps, ...sals].map(r => r.localId))];
+  return sortBy(ids.map(id => { const l = loc(id); return { nome: l.nome, cor: l.cor, g: grupoRel([...ps, ...sals].filter(r => r.localId === id)) }; }), x => -x.g.tot);
+}
+function gruposEsp(ps) {
+  const m = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (m[k] ||= []).push(p); });
+  return sortBy(Object.entries(m).map(([k, a]) => { const i = k.indexOf('|'), l = loc(k.slice(0, i)), t = k.slice(i + 1); return { nome: l.nome + (t ? ' · ' + t : ''), tag: t, cor: t ? corTag(t) : l.cor, lcor: l.cor, g: grupoRel(a) }; }), x => -x.g.tot);
+}
+// Gráfico do período escolhido: por local (barras) e, se o período tiver mais de um mês, mês a mês
+function chartPeriodo(ps, sals, paraPDF) {
+  const VERDE = '#1F7A4D', ABERTO = '#E9B44C', F = paraPDF ? 'Helvetica, Arial, sans-serif' : 'Inter, sans-serif';
+  const gl = gruposLocal(ps, sals);
+  const W = 600, rh = 50, H1 = gl.length * rh + 6;
+  const max = Math.max(1, ...gl.map(x => x.g.tot));
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="img" aria-label="Recebido e em aberto por local">`;
+  gl.forEach((x, i) => {
+    const y = i * rh + 4, wr = (x.g.rec / max) * W, wa = (x.g.ab / max) * W;
+    s += `<rect x="0" y="${y}" width="5" height="16" fill="${x.cor}"/><text x="11" y="${y + 13}" font-family="${F}" font-size="17" font-weight="600" fill="#17141F">${esc(x.nome)}</text><text x="${W}" y="${y + 13}" text-anchor="end" font-family="${F}" font-size="16" font-weight="600" fill="#17141F">${money(x.g.tot)}</text>`;
+    s += `<rect x="0" y="${y + 22}" width="${W}" height="16" fill="#F1EEE7"/><rect x="0" y="${y + 22}" width="${wr}" height="16" fill="${VERDE}"/><rect x="${wr}" y="${y + 22}" width="${wa}" height="16" fill="${ABERTO}"/>`;
+  });
+  s += '</svg>';
+  let meses = [];
+  const R = S.rel;
+  if (R.tipo === 'ano') meses = Array.from({ length: 12 }, (_, i) => `${R.ano}-${p2(i + 1)}`);
+  else if (R.tipo === 'tudo' || R.tipo === 'periodo') { const ms = [...ps.map(p => p.data.slice(0, 7)), ...sals.map(x => x.ref)].sort(); if (ms.length && ms[0] !== ms[ms.length - 1]) { let m = ms[0]; while (m <= ms[ms.length - 1] && meses.length < 36) { meses.push(m); m = addM(m, 1); } } }
+  let s2 = '';
+  if (meses.length > 1) {
+    const dados = meses.map(m => { const it = [...ps.filter(p => p.data.slice(0, 7) === m), ...sals.filter(x => x.ref === m)]; const g = grupoRel(it); return { m, rec: g.rec, ab: g.ab }; });
+    const mx = Math.max(1, ...dados.map(d => d.rec + d.ab)), H = 210, pb = 24, pt = 18, gap = 6, bw = (W - gap * (meses.length - 1)) / meses.length, sc = v => v / mx * (H - pb - pt);
+    s2 = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Mês a mês" style="margin-top:14px">`;
+    dados.forEach((d, i) => { const x = i * (bw + gap), hr = sc(d.rec), ha = sc(d.ab), y0 = H - pb, t = d.rec + d.ab;
+      s2 += `<rect x="${x}" y="${y0 - hr}" width="${bw}" height="${hr}" fill="${VERDE}"/><rect x="${x}" y="${y0 - hr - ha}" width="${bw}" height="${ha}" fill="${ABERTO}"/>`;
+      if (t) s2 += `<text x="${x + bw / 2}" y="${y0 - hr - ha - 4}" text-anchor="middle" font-family="${F}" font-size="10" fill="#17141F">${t >= 1000 ? (t / 1000).toFixed(1).replace('.', ',') + 'k' : Math.round(t)}</text>`;
+      s2 += `<text x="${x + bw / 2}" y="${H - 7}" text-anchor="middle" font-family="${F}" font-size="11" font-weight="600" fill="#5B5670">${MESC[+d.m.slice(5) - 1].toUpperCase()}</text>`; });
+    s2 += `<line x1="0" x2="${W}" y1="${H - pb}" y2="${H - pb}" stroke="#17141F"/></svg>`;
+  }
+  if (paraPDF) return [s, s2].filter(Boolean);
+  return s + s2 + `<div class="leg"><span><i style="background:${VERDE}"></i>Recebido</span><span><i style="background:${ABERTO}"></i>Em aberto</span></div>`;
+}
+function svgParaPNG(svg) {
+  return new Promise(res => {
+    const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), w = m ? +m[1] : 600, h = m ? +m[2] : 300, k = 2;
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = w * k; c.height = h * k; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); res({ url: c.toDataURL('image/png'), w, h }); };
+    img.onerror = () => res(null);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
 function vRel() {
   if (S.rel.tipo === 'ciclo' && S.rel.local) { const cs = ciclosDoLocal(S.rel.local); if (cs.length && !cs.includes(S.rel.ciclo)) S.rel.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; }
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
@@ -913,31 +987,20 @@ function vRel() {
   if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; if (R.local && cs.length && !cs.includes(R.ciclo)) R.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
   const filtro = `<label class="f" style="margin:0"><span>Local</span><select class="in" data-rel="local"><option value="">${R.tipo === 'ciclo' ? 'Escolha…' : 'Todos os locais'}</option>${locs.map(l => `<option value="${l.id}" ${l.id === R.local ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>`;
   const pagBase = R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo);
+  const G = grupoRel([...ps, ...sals]);
   let html = `<div class="top"><div class="titulo">Relatórios</div></div>
     <div class="seg" style="margin-bottom:12px">${seg}</div>
     <div class="relf">${filtro}${campos}${['mes','ano','periodo'].includes(R.tipo) ? `<div class="seg"><button class="${R.base !== 'pag' ? 'on' : ''}" data-act="relBase" data-v="trab">Data do plantão</button><button class="${R.base === 'pag' ? 'on' : ''}" data-act="relBase" data-v="pag">Data do pagamento</button></div>` : ''}</div>
-    <div class="h">${esc(P.txt)}</div>
-    <div class="mets">
-      <div class="met dest"><span>${pagBase ? 'Total do período' : 'Total trabalhado'}</span><b>${money(z.trab)}</b><small>${z.n} ${z.n === 1 ? 'plantão' : 'plantões'}${sals.length ? ' + salário' : ''}</small></div>
-      <div class="met"><span>Recebido</span><b>${money(z.rec)}</b></div>
-      <div class="met"><span>A receber</span><b>${money(z.aReceber)}</b></div>
-      <div class="met ${z.atrasado ? 'alerta' : ''}"><span>Atrasado</span><b>${money(z.atrasado)}</b><small>${z.nAtr} pendente${z.nAtr === 1 ? '' : 's'}</small></div>
-      <div class="met"><span>Horas</span><b>${hh(z.min)}</b><small>${z.dias} dia${z.dias === 1 ? '' : 's'} trabalhado${z.dias === 1 ? '' : 's'}</small></div>
-      <div class="met"><span>Valor por hora</span><b>${money(z.vh)}</b></div>
-    </div>
-    <div class="muted" style="font-size:12px;margin-top:8px">${P.ciclo ? 'Plantões cujo pagamento está previsto para a data do ciclo.' : pagBase ? 'Pela data do pagamento: igual ao Financeiro.' : R.tipo === 'tudo' ? 'Todos os plantões registrados.' : 'Pela data do plantão: igual à Agenda.'}</div>
+    <div class="h" style="font-size:26px">${esc(P.txt)}</div>
+    ${triHTML(G, true)}
+    <div class="rbar"><span style="width:${G.tot ? Math.round(G.rec / G.tot * 100) : 0}%"></span></div>
+    <div class="muted" style="font-size:13px;margin-top:6px">${G.n} ${G.n === 1 ? 'plantão' : 'plantões'} · ${z.dias} dia${z.dias === 1 ? '' : 's'} · ${hh(G.min)}${sals.length ? ' · inclui salário' : ''}${G.atr ? ` · <b style="color:var(--verm)">${money(G.atr)} atrasado</b>` : ''}</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">${P.ciclo ? 'Plantões cujo pagamento está previsto para a data do ciclo.' : pagBase ? 'Pela data do pagamento: igual ao Financeiro.' : R.tipo === 'tudo' ? 'Todos os plantões registrados.' : 'Todos os valores são deste período, pela data do plantão.'}</div>
     <div class="btns" style="margin-top:12px"><button class="btn" data-act="pdf">${ic('dl')}PDF</button><button class="btn" data-act="csvRel">${ic('dl')}CSV</button></div>`;
-  const refMes = R.tipo === 'mes' ? R.mes : HOJE.slice(0,7);
-  html += `<div class="h">Últimos 6 meses</div><div class="card chart">${chartMeses(refMes, R.local)}</div>`;
-  if (linhas.length) {
-    html += `<div class="h">Por local</div><div class="card chart">${chartLocais(linhas)}</div>
-    <div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">R$/h</th><th class="r">Em aberto</th></tr></thead><tbody>
-    ${linhas.map(x => `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${x.l.cor};margin-right:6px"></span>${esc(x.l.nome)}</td><td class="r">${x.n}</td><td class="r">${hh(x.min)}</td><td class="r">${money(x.total)}</td><td class="r">${x.min ? money(x.vh) : '—'}</td><td class="r" style="${x.atr ? 'color:var(--ambar)' : ''}">${money(x.aberto)}</td></tr>`).join('')}
-    </tbody></table></div>`;
-  }
-  const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
-  const espL = sortBy(Object.entries(esp), ([, a]) => -a.reduce((x, p) => x + ef(p), 0));
-  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) html += `<div class="h">Por especialidade</div><div class="card tbw"><table class="tb"><thead><tr><th>Local · especialidade</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Em aberto</th></tr></thead><tbody>${espL.map(([k, a]) => { const [lid, t] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t ? corTag(t) : loc(lid).cor};margin-right:6px"></span>${esc(loc(lid).nome)}${t ? ' · <b>' + esc(t) + '</b>' : ''}</td><td class="r">${a.length}</td><td class="r">${hh(a.reduce((x, p) => x + dur(p), 0))}</td><td class="r">${money(a.reduce((x, p) => x + ef(p), 0))}</td><td class="r">${money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))}</td></tr>`; }).join('')}</tbody></table></div>`;
+  if (ps.length || sals.length) html += `<div class="h">Recebido × em aberto</div><div class="card chart">${chartPeriodo(ps, sals)}</div>`;
+  const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
+  if (gl.length) html += `<div class="h">Por local</div>` + gl.map(x => cardGrupo(x.nome, x.cor, x.g)).join('');
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) html += `<div class="h">Por especialidade</div>` + ge.map(x => cardGrupo(x.nome, x.cor, x.g, x.lcor)).join('');
   const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
   if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
   if (R.tipo === 'tudo' || R.tipo === 'ano') {
@@ -973,15 +1036,34 @@ async function gerarPDF() {
   let y = 36;
   const secao = t => { if (y > 265) { doc.addPage(); y = 18; } doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TINTA); doc.text(t, M, y); y += 2; };
   const tabela = (head, body, extra = {}) => { doc.autoTable({ ...base, startY: y, head: [head], body, ...extra }); y = doc.lastAutoTable.finalY + 8; };
-  secao('Resumo');
-  tabela(['Total trabalhado', 'Recebido', 'A receber', 'Atrasado'], [[money(z.trab), money(z.rec), money(z.aReceber), money(z.atrasado)]], { styles: { ...base.styles, fontSize: 10, halign: 'center' } });
-  y -= 6;
-  tabela(['Plantões', 'Dias', 'Horas', 'Valor por hora'], [[String(z.n), String(z.dias), hh(z.min), money(z.vh)]], { styles: { ...base.styles, fontSize: 10, halign: 'center' } });
+  // Período em destaque
+  doc.setFillColor(239, 232, 252); doc.rect(M, y - 4, W - 2 * M, 12, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(78, 27, 163); doc.text('Período: ' + P.txt, M + 3, y + 3.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...CINZA); doc.text('Todos os valores deste relatório referem-se a este período' + (R.local ? ' e a ' + lnome : '') + '.', M + 3, y + 7.3);
+  y += 14;
+  // Os três valores principais
+  const G = grupoRel([...ps, ...sals]), bw = (W - 2 * M - 8) / 3;
+  [[rotTot(), G.tot, ROXO, [255, 255, 255]], ['Recebido', G.rec, [226, 242, 232], [31, 122, 77]], ['Em aberto', G.ab, [255, 244, 220], [138, 83, 0]]].forEach(([t, v, bg, fg], i) => {
+    const x = M + i * (bw + 4); doc.setFillColor(...bg); doc.roundedRect(x, y, bw, 20, 1.5, 1.5, 'F');
+    doc.setTextColor(...fg); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.text(t, x + 4, y + 7); doc.setFontSize(15); doc.text(money(v), x + 4, y + 15.5);
+  });
+  y += 25;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TINTA);
+  doc.text(`${G.n} ${G.n === 1 ? 'plantão' : 'plantões'} · ${z.dias} dia${z.dias === 1 ? '' : 's'} · ${hh(G.min)}${G.atr ? ` · ${money(G.atr)} atrasado` : ''}`, M, y); y += 7;
+  // Gráfico do período
+  const svgs = (ps.length || sals.length) ? chartPeriodo(ps, sals, true) : [];
+  if (svgs.length) {
+    secao('Recebido × em aberto'); y += 2;
+    for (const sv of svgs) { const im = await svgParaPNG(sv); if (!im) continue; const iw = W - 2 * M, ih = iw * im.h / im.w; if (y + ih > 280) { doc.addPage(); y = 18; } doc.addImage(im.url, 'PNG', M, y, iw, ih); y += ih + 3; }
+    doc.setFontSize(8); doc.setFillColor(31, 122, 77); doc.rect(M, y, 3, 3, 'F'); doc.setTextColor(...CINZA); doc.text('Recebido', M + 4.5, y + 2.6); doc.setFillColor(233, 180, 76); doc.rect(M + 24, y, 3, 3, 'F'); doc.text('Em aberto', M + 28.5, y + 2.6); y += 10;
+  }
   const dir = { halign: 'right' };
-  if (linhas.length) { secao('Por local'); tabela(['Local', 'Plantões', 'Horas', 'Total', 'R$/h', 'Em aberto'], linhas.map(x => [x.l.nome, x.n, hh(x.min), money(x.total), x.min ? money(x.vh) : '—', money(x.aberto)]), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir, 5: dir } }); }
-  const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
-  const espL = Object.entries(esp);
-  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) { secao('Por especialidade'); tabela(['Local · especialidade', 'Plantões', 'Horas', 'Total', 'Em aberto'], espL.map(([k, a]) => { const i = k.indexOf('|'); const t = k.slice(i + 1); return [loc(k.slice(0, i)).nome + (t ? ' - ' + t : ''), a.length, hh(a.reduce((x, p) => x + dur(p), 0)), money(a.reduce((x, p) => x + ef(p), 0)), money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))]; }), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir } }); }
+  const corCols = { 3: { halign: 'right', fontStyle: 'bold', textColor: [78, 27, 163] }, 4: { halign: 'right', fontStyle: 'bold', textColor: [31, 122, 77] }, 5: { halign: 'right', fontStyle: 'bold', textColor: [138, 83, 0] }, 1: dir, 2: dir };
+  const linhaG = x => [x.nome, x.g.n, hh(x.g.min), money(x.g.tot), money(x.g.rec), money(x.g.ab)];
+  const cab = (a) => [a, 'Plantões', 'Horas', rotTot(), 'Recebido', 'Em aberto'];
+  const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
+  if (gl.length) { secao('Por local'); tabela(cab('Local'), gl.map(linhaG), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(gl[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); }
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(ge[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); }
   if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
   if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
   const divs = ps.filter(p => p.dividido);
