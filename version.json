@@ -1,4 +1,4 @@
 {
-  "versao": "1.6",
-  "notas": "Relatórios mais claros: Total, Recebido e Em aberto em destaque, gráfico do período escolhido (também no PDF) e um card por local e por especialidade."
+  "versao": "1.7",
+  "notas": "Relatórios: por local e por especialidade voltam a listar cada plantão, com pago em verde, em aberto em amarelo e atrasado em vermelho."
 }
