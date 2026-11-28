@@ -816,7 +816,7 @@ function vFin() {
     <div class="hero-bar"><span style="width:${pct}%"></span></div></div>
     <div class="muted" style="font-size:12px;margin-top:6px">Plantões feitos em ${mesN}, iguais aos da agenda. Cada um mostra a data do pagamento.</div>`;
   if (atrasAnt.length) html += `<div class="h">Atrasados de meses anteriores<span class="sub" style="color:var(--verm)">${money(sm(atrasAnt))}</span></div><div class="flist">${atrasAnt.map(linha).join('')}</div>`;
-  html += `<div class="h">Plantões de ${mesN}<span class="sub">${caiu.length} de ${doMes.length} pagos</span></div>` + (doMes.length ? `<div class="flist">${doMes.map(linha).join('')}</div>` : `<div class="vazio">Nenhum plantão em ${mesN}.</div>`);
+  html += `<div class="h">Plantões de ${mesN}<span class="sub">${caiu.length} de ${doMes.length} pagos${falta.length > 1 || atrasAnt.length ? ` · <button class="btn sm g" style="height:26px;padding:0 6px" data-act="pagarVarios">${ic('ok')}Vários</button>` : ''}</span></div>` + (doMes.length ? `<div class="flist">${doMes.map(linha).join('')}</div>` : `<div class="vazio">Nenhum plantão em ${mesN}.</div>`);
   const notaPend = sortBy(S.plantoes.filter(p => !p.pago && !p.notaSolicitada && loc(p.localId).precisaNota && p.data <= HOJE), p => p.data);
   if (notaPend.length) html += `<div class="h">Solicitar pagamento<span class="sub">emitir nota</span></div><div class="card">${notaPend.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><div class="g"><b>${esc(l.nome)}</b><span class="mono">${rotulo(p)} · ${money(total(p))}</span></div><button class="btn sm" data-act="solicitar" data-id="${p.id}">Solicitado hoje</button></div>`; }).join('')}</div>`;
   return html;
@@ -1618,6 +1618,13 @@ document.addEventListener('click', async e => {
     case 'finProx': S.finMes = addM(S.finMes, 1); return render();
     case 'finToggle': S.finOpen[id] = !S.finOpen[id]; return render();
     case 'pagarLocal': return formPagarLocal(id);
+    case 'pagarVarios': {
+      const ls = locaisOrd().filter(l => recebiveis().some(r => r.localId === l.id && !r.pago && total(r) > 0));
+      if (ls.length === 1) return formPagarLocal(ls[0].id);
+      const b = openSheet('Marcar vários', `<div class="muted" style="margin-bottom:10px">Escolha o local que pagou:</div>${ls.map(l => `<button class="li" style="width:100%" data-pl="${l.id}"><span class="sq" style="--c:${l.cor}">${esc(sigla(l).slice(0,3).toUpperCase())}</span><div class="g"><b>${esc(l.nome)}</b></div>${ic('r')}</button>`).join('')}`);
+      b.addEventListener('click', e => { const x = e.target.closest('[data-pl]'); if (x) { closeSheet(); formPagarLocal(x.dataset.pl); } });
+      return;
+    }
     case 'solicitar': { const p = S.plantoes.find(x => x.id === id); await put('plantoes', { ...p, notaSolicitada: HOJE }); return toast('Solicitação registrada'); }
     case 'relTipo': { const ant = S.rel.tipo; S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) { S.rel.local = locaisOrd()[0]?.id || ''; S.rel.autoLocal = true; S.rel.ciclo = ''; } if (ant === 'ciclo' && S.rel.tipo !== 'ciclo' && S.rel.autoLocal) { S.rel.local = ''; S.rel.autoLocal = false; } return render(); }
     case 'pdf': return gerarPDF();
