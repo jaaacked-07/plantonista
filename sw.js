@@ -1,4 +1,4 @@
-const VERSION = 'plantonista-v9';
+const VERSION = 'plantonista-v10';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'];
 
 self.addEventListener('install', e => {

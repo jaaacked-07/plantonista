@@ -343,12 +343,13 @@ const ddmmaa = s => s ? `${s.slice(8,10)}/${s.slice(5,7)}/${s.slice(0,4)}` : '�
 const dataLonga = s => { const d = pd(s); return `${cap(SEM[d.getDay()])}, ${d.getDate()} de ${MESES[d.getMonth()]}`; };
 const BRL = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
 const money = v => BRL.format(+v || 0);
-const num = v => { if (typeof v === 'number') return v; const s = String(v||'').trim().replace(/[R$\s]/g,''); if (!s) return 0; const n = s.includes(',') ? s.replace(/\./g,'').replace(',', '.') : s; return +n || 0; };
+const num = v => { if (typeof v === 'number') return isFinite(v) ? v : 0; let s = String(v || '').trim().replace(/[R$\s]/g, ''); if (!s) return 0; if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); const n = parseFloat(s); return isFinite(n) ? Math.round(n * 100) / 100 : 0; };
 const tm = s => { if (!s) return 0; const [h,m] = s.split(':').map(Number); return h*60 + (m||0); };
 const dur = p => { if (!p.inicio || !p.fim) return 0; let d = tm(p.fim) - tm(p.inicio); if (d <= 0) d += 1440; return d; };
 const cruza = p => p.inicio && p.fim && tm(p.fim) <= tm(p.inicio) && tm(p.fim) > 0;
 const hh = m => { m = Math.round(m); const h = Math.floor(m/60), r = m%60; return r ? `${h}h${p2(r)}` : `${h}h`; };
 const total = p => (p.dividido ? (+p.parte||0) : (+p.valor||0)) + (+p.extra||0);
+const ef = r => r.pago ? (+r.valorPago || 0) : total(r); // valor efetivo: o recebido, se pago; senão o esperado
 const desconto = p => p.dividido ? Math.max(0, (+p.valor||0) - (+p.parte||0)) : 0;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const sortBy = (arr, f) => arr.slice().sort((a,b) => { const x = f(a), y = f(b); return x < y ? -1 : x > y ? 1 : 0; });
@@ -716,10 +717,10 @@ function vAgenda() {
   const hdr = Array.from({length:7}, (_, i) => `<div>${SEMC[(i + ws) % 7]}</div>`).join('');
   const doMes = ps.filter(p => p.data.slice(0,7) === ym);
   const horas = doMes.reduce((s, p) => s + dur(p), 0), dias = new Set(doMes.map(p => p.data)).size;
-  const valor = doMes.reduce((s, p) => s + total(p), 0);
+  const valor = doMes.reduce((s, p) => s + ef(p), 0);
   const nav = `<div class="mesnav" style="margin:-6px 0 12px"><button class="ib" data-act="mesAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="mesProx" aria-label="Próximo mês">${ic('r')}</button>${ym !== HOJE.slice(0,7) || S.sel !== HOJE ? `<button class="btn sm g" data-act="hoje">Hoje</button>` : ''}</div>`;
   return top + instala + intro + nav + filtros + `<div class="cal"><div class="cal-h">${hdr}</div><div class="cal-g">${cells}</div></div>
-    <div class="stats"><div><b>${doMes.length}</b><span>Plantões</span></div><div><b>${hh(horas)}</b><span>Horas</span></div><div><b>${dias}</b><span>Dias</span></div><div><b style="font-size:${priv() ? 15 : valor >= 10000 ? 13.5 : 15}px">${mv(valor)}</b><span>No mês</span></div></div>
+    <div class="stats"><div><b>${doMes.length}</b><span>Plantões</span></div><div><b>${hh(horas)}</b><span>Horas</span></div><div><b>${dias}</b><span>Dias</span></div><div><b style="font-size:${priv() ? 15 : valor >= 10000 ? 13.5 : 15}px">${mv(valor)}</b><span>${(S.cfg.filtro || []).length || (S.cfg.filtroTag || []).length ? 'Filtrado' : 'No mês'}</span></div></div>
     <div class="muted" style="font-size:12px;text-align:center;margin-top:6px">Toque num plantão para editar · segure e arraste para mudar o dia</div>
     ${vDia(S.sel)}`;
 }
@@ -767,7 +768,7 @@ function vFin() {
     <div class="top-acts"><button class="ib" data-act="finAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="finProx" aria-label="Próximo mês">${ic('r')}</button></div></div>`;
   const trabMes = S.plantoes.filter(p => p.data.slice(0,7) === ym), salMes = salarios().filter(x => x.ref === ym);
   const mets = `<div class="mets">
-    <div class="met" style="grid-column:1/-1"><span>Trabalhado em ${nomeMes(ym).toLowerCase()}</span><b>${money(sm([...trabMes, ...salMes]))}</b><small>${trabMes.length} ${trabMes.length === 1 ? 'plantão feito' : 'plantões feitos'} no mês · ${hh(trabMes.reduce((x, p) => x + dur(p), 0))} (igual à agenda e ao relatório)</small></div>
+    <div class="met" style="grid-column:1/-1"><span>Trabalhado em ${nomeMes(ym).toLowerCase()}</span><b>${money(sm([...trabMes, ...salMes], ef))}</b><small>${trabMes.length} ${trabMes.length === 1 ? 'plantão feito' : 'plantões feitos'} no mês · ${hh(trabMes.reduce((x, p) => x + dur(p), 0))} (igual à agenda e ao relatório)</small></div>
     <div class="met dest"><span>Recebido no mês</span><b>${money(sm(recMes, r => +r.valorPago || 0))}</b><small>${recMes.length} pagamento${recMes.length === 1 ? '' : 's'}</small></div>
     <div class="met"><span>Previsto p/ receber</span><b>${money(sm(prevMes))}</b><small>${prevMes.length} pagamento${prevMes.length === 1 ? '' : 's'} com data em ${MESC[+ym.slice(5)-1]}</small></div>
     <div class="met ${atras.length ? 'alerta' : ''}"><span>Atrasado</span><b>${money(sm(atras))}</b><small>${atras.length} pendente${atras.length === 1 ? '' : 's'}</small></div>
@@ -823,7 +824,7 @@ function dadosRel() {
 }
 function resumo(ps, sals) {
   const all = [...ps, ...sals], sm = (a, f) => a.reduce((s, r) => s + f(r), 0);
-  const trab = sm(all, total), rec = sm(all.filter(r => r.pago), r => +r.valorPago || 0);
+  const trab = sm(all, ef), rec = sm(all.filter(r => r.pago), r => +r.valorPago || 0);
   const ab = all.filter(r => !r.pago), atr = ab.filter(r => r.prev && r.prev < HOJE);
   const min = sm(ps, dur);
   return { trab, rec, aReceber: sm(ab, total), atrasado: sm(atr, total), nAtr: atr.length, n: ps.length, dias: new Set(ps.map(p => p.data)).size, min, vh: min ? trab / (min/60) : 0 };
@@ -869,7 +870,7 @@ function linhasLocal(ps, sals) {
   const ids = [...new Set([...ps, ...sals].map(r => r.localId))];
   return sortBy(ids.map(id => {
     const a = ps.filter(p => p.localId === id), b = sals.filter(s => s.localId === id), all = [...a, ...b];
-    const min = a.reduce((s, p) => s + dur(p), 0), t = all.reduce((s, r) => s + total(r), 0);
+    const min = a.reduce((s, p) => s + dur(p), 0), t = all.reduce((s, r) => s + ef(r), 0);
     return { l: loc(id), n: a.length, min, total: t, vh: min ? t / (min/60) : 0, aberto: all.filter(r => !r.pago).reduce((s, r) => s + total(r), 0), atr: all.filter(r => !r.pago && r.prev && r.prev < HOJE).reduce((s, r) => s + total(r), 0) };
   }), x => -x.total);
 }
@@ -907,8 +908,8 @@ function vRel() {
     </tbody></table></div>`;
   }
   const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
-  const espL = sortBy(Object.entries(esp), ([, a]) => -a.reduce((x, p) => x + total(p), 0));
-  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) html += `<div class="h">Por especialidade</div><div class="card tbw"><table class="tb"><thead><tr><th>Local · especialidade</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Em aberto</th></tr></thead><tbody>${espL.map(([k, a]) => { const [lid, t] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t ? corTag(t) : loc(lid).cor};margin-right:6px"></span>${esc(loc(lid).nome)}${t ? ' · <b>' + esc(t) + '</b>' : ''}</td><td class="r">${a.length}</td><td class="r">${hh(a.reduce((x, p) => x + dur(p), 0))}</td><td class="r">${money(a.reduce((x, p) => x + total(p), 0))}</td><td class="r">${money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))}</td></tr>`; }).join('')}</tbody></table></div>`;
+  const espL = sortBy(Object.entries(esp), ([, a]) => -a.reduce((x, p) => x + ef(p), 0));
+  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) html += `<div class="h">Por especialidade</div><div class="card tbw"><table class="tb"><thead><tr><th>Local · especialidade</th><th class="r">Plant.</th><th class="r">Horas</th><th class="r">Total</th><th class="r">Em aberto</th></tr></thead><tbody>${espL.map(([k, a]) => { const [lid, t] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return `<tr><td class="wrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t ? corTag(t) : loc(lid).cor};margin-right:6px"></span>${esc(loc(lid).nome)}${t ? ' · <b>' + esc(t) + '</b>' : ''}</td><td class="r">${a.length}</td><td class="r">${hh(a.reduce((x, p) => x + dur(p), 0))}</td><td class="r">${money(a.reduce((x, p) => x + ef(p), 0))}</td><td class="r">${money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))}</td></tr>`; }).join('')}</tbody></table></div>`;
   const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
   if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
   if (R.tipo === 'tudo' || R.tipo === 'ano') {
@@ -952,7 +953,7 @@ async function gerarPDF() {
   if (linhas.length) { secao('Por local'); tabela(['Local', 'Plantões', 'Horas', 'Total', 'R$/h', 'Em aberto'], linhas.map(x => [x.l.nome, x.n, hh(x.min), money(x.total), x.min ? money(x.vh) : '—', money(x.aberto)]), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir, 5: dir } }); }
   const esp = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (esp[k] ||= []).push(p); });
   const espL = Object.entries(esp);
-  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) { secao('Por especialidade'); tabela(['Local · especialidade', 'Plantões', 'Horas', 'Total', 'Em aberto'], espL.map(([k, a]) => { const i = k.indexOf('|'); const t = k.slice(i + 1); return [loc(k.slice(0, i)).nome + (t ? ' - ' + t : ''), a.length, hh(a.reduce((x, p) => x + dur(p), 0)), money(a.reduce((x, p) => x + total(p), 0)), money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))]; }), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir } }); }
+  if (espL.length > 1 || (espL[0] && espL[0][0].split('|')[1])) { secao('Por especialidade'); tabela(['Local · especialidade', 'Plantões', 'Horas', 'Total', 'Em aberto'], espL.map(([k, a]) => { const i = k.indexOf('|'); const t = k.slice(i + 1); return [loc(k.slice(0, i)).nome + (t ? ' - ' + t : ''), a.length, hh(a.reduce((x, p) => x + dur(p), 0)), money(a.reduce((x, p) => x + ef(p), 0)), money(a.filter(p => !p.pago).reduce((x, p) => x + total(p), 0))]; }), { columnStyles: { 1: dir, 2: dir, 3: dir, 4: dir } }); }
   if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
   if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
   const divs = ps.filter(p => p.dividido);
@@ -1236,7 +1237,7 @@ function formPlantao(id, preset = {}) {
   b.querySelectorAll('[data-grp]').forEach(x => x.onclick = () => { const id = x.dataset.grp, on = !x.classList.contains('on'); b.querySelectorAll('[data-grp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-esps]').forEach(y => y.classList.toggle('hide', !on || y.dataset.esps !== id)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.add('hide')); b.querySelectorAll('[data-esp]').forEach(y => y.classList.remove('on')); if (on) { f.localId.value = id; recalc(); ui(); const es = [...b.querySelectorAll('[data-esp]')].filter(y => y.dataset.esp.split('|')[0] === id); if (es.length === 1) es[0].click(); } });
   b.querySelectorAll('[data-esp]').forEach(x => x.onclick = () => { const k = x.dataset.esp, on = !x.classList.contains('on'); b.querySelectorAll('[data-esp]').forEach(y => y.classList.toggle('on', on && y === x)); b.querySelectorAll('[data-mods]').forEach(y => y.classList.toggle('hide', !on || y.dataset.mods !== k)); if (on) f.tag.value = k.slice(k.indexOf('|') + 1); });
   b.querySelectorAll('[data-mod]').forEach(x => x.onclick = () => { const m = S.modelos.find(y => y.id === x.dataset.mod); f.localId.value = m.localId; f.inicio.value = m.inicio; f.fim.value = m.fim; f.valor.value = v(m.valor); f.tag.value = tagModelo(m); if (m.nota) f.nota.value = m.nota; p.modeloId = m.id; b.querySelectorAll('[data-mod]').forEach(y => y.classList.toggle('on', y === x)); recalc(); ui(); });
-  if (f.pago) f.pago.onchange = () => { b.querySelector('[data-pago-box]').classList.toggle('hide', !f.pago.checked); if (f.pago.checked && !num(f.valorPago.value)) f.valorPago.value = v(num(f.valor.value) + num(f.extra.value)); };
+  if (f.pago) f.pago.onchange = () => { b.querySelector('[data-pago-box]').classList.toggle('hide', !f.pago.checked); if (f.pago.checked && !num(f.valorPago.value)) f.valorPago.value = v((f.dividido.checked ? num(f.parte.value) : num(f.valor.value)) + num(f.extra.value)); };
   // Repetição
   let wds = [], datas = [p.data];
   const renderMini = () => {
@@ -1269,7 +1270,7 @@ function formPlantao(id, preset = {}) {
   f.onsubmit = async e => {
     e.preventDefault();
     const o = { ...p, tag: f.tag.value.trim(), localId: f.localId.value, data: f.data.value, inicio: f.inicio.value, fim: f.fim.value, valor: num(f.valor.value), extra: num(f.extra.value), extraDesc: num(f.extra.value) ? f.extraDesc.value.trim() : '', prev: f.prev.value || '', notaSolicitada: f.notaSolicitada.value || '', nota: f.nota.value.trim(), importante: f.importante.checked, semLembrete: f.semLembrete.checked, dividido: f.dividido.checked, colega: f.dividido.checked ? f.colega.value.trim() : '', parte: f.dividido.checked ? num(f.parte.value) : 0 };
-    if (f.pago) { o.pago = f.pago.checked; o.valorPago = o.pago ? num(f.valorPago.value) : 0; o.dataPago = o.pago ? (f.dataPago.value || HOJE) : ''; }
+    if (f.pago) { o.pago = f.pago.checked; o.valorPago = o.pago ? (f.valorPago.value.trim() ? num(f.valorPago.value) : total(o)) : 0; o.dataPago = o.pago ? (f.dataPago.value || HOJE) : ''; }
     if (novo) {
       const rep = lerRep(), ds = gerarDatas(o.data, rep);
       if (!ds.length) return toast('Escolha pelo menos um dia.');
@@ -1306,7 +1307,7 @@ function formPagar(id) {
     <button class="btn p w" type="submit">${ic('ok')}Confirmar pagamento</button>
   </form>`);
   const f = b.querySelector('#fpg');
-  f.onsubmit = async e => { e.preventDefault(); closeSheet(); await pagar([r], num(f.valor.value), f.data.value || HOJE); toast('Pagamento registrado', 'Desfazer', () => despagar([achaRec(r.id)])); };
+  f.onsubmit = async e => { e.preventDefault(); closeSheet(); await pagar([r], f.valor.value.trim() ? num(f.valor.value) : total(r), f.data.value || HOJE); toast('Pagamento registrado', 'Desfazer', () => despagar([achaRec(r.id)])); };
 }
 async function pagar(lista, valorTotal, data) {
   const soma = lista.reduce((s, r) => s + total(r), 0);
@@ -1353,7 +1354,7 @@ function formPagarLocal(lid) {
   upd();
   f.onsubmit = async e => {
     e.preventDefault(); const a = atual(); if (!a.length) return toast('Selecione pelo menos um.');
-    closeSheet(); await pagar(a, num(f.valor.value), f.data.value || HOJE);
+    closeSheet(); await pagar(a, f.valor.value.trim() ? num(f.valor.value) : a.reduce((x, r) => x + total(r), 0), f.data.value || HOJE);
     toast(`${a.length} marcado${a.length > 1 ? 's' : ''} como pago${a.length > 1 ? 's' : ''}`, 'Desfazer', () => despagar(a.map(r => achaRec(r.id))));
   };
 }
