@@ -155,6 +155,18 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .fgrp .chip.on{border-color:var(--roxo)}
 .chip.mini{height:26px;padding:0 9px;font-size:12px}
 .qlbl{display:inline-flex;align-items:center;height:32px;padding:0 8px;font-size:12px;font-weight:600;color:var(--c);border-left:3px solid var(--c);white-space:nowrap}
+.hero{background:var(--roxo);color:#fff;border-radius:4px;padding:16px}
+.hero>span{font-family:var(--serif);font-size:15px;color:#E5DAFB}
+.hero>b{display:block;font-family:var(--mono);font-size:30px;font-weight:600;margin:2px 0 12px}
+.hero-split{display:flex;gap:22px;font-size:12.5px;color:#E5DAFB}
+.hero-split b{display:block;color:#fff;font-family:var(--mono);font-size:16px;font-weight:600}
+.hero-bar{height:6px;background:rgba(255,255,255,.25);border-radius:3px;margin-top:12px;overflow:hidden}
+.hero-bar span{display:block;height:100%;background:#fff}
+.upd{position:fixed;left:12px;right:12px;top:calc(var(--st) + 10px);z-index:90;background:var(--tinta);color:#fff;border-radius:6px;padding:12px 14px;box-shadow:0 10px 30px rgba(23,20,31,.3);max-width:560px;margin:0 auto;animation:up .25s}
+.upd b{font-family:var(--serif);font-size:16px;font-weight:600}
+.upd p{font-size:13px;color:#D9D3E8;margin:4px 0 10px}
+.upd .btns .btn{height:36px}
+.upd .btn:not(.p){background:transparent;color:#fff;border-color:#4A4459}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -294,7 +306,7 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.1';
+const VERSAO = '1.2';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -365,7 +377,7 @@ const DEFCFG = () => ({ semana:'dom', noturnoDoisDias:true, privacidade:false, f
 const S = {
   uid:null, user:'', locais:[], modelos:[], plantoes:[], ferias:[], cfg:DEFCFG(),
   view:'agenda', mes:HOJE.slice(0,7), sel:HOJE, modo:'mes', finMes:HOJE.slice(0,7), finOpen:{},
-  rel:{ tipo:'mes', mes:HOJE.slice(0,7), ano:HOJE.slice(0,4), local:'', ciclo:'', de:addD(HOJE,-30), ate:HOJE },
+  rel:{ base:'trab', tipo:'mes', mes:HOJE.slice(0,7), ano:HOJE.slice(0,4), local:'', ciclo:'', de:addD(HOJE,-30), ate:HOJE },
   loaded:{}, pushErr:''
 };
 let FB = null, unsubs = [];
@@ -758,30 +770,32 @@ function vLista() {
    FINANCEIRO
    ========================================================= */
 function vFin() {
-  const ym = S.finMes, R = recebiveis();
-  const recMes = R.filter(r => r.pago && (r.dataPago || '').slice(0,7) === ym);
-  const prevMes = R.filter(r => !r.pago && (r.prev || '').slice(0,7) === ym);
-  const atras = sortBy(R.filter(r => !r.pago && r.prev && r.prev < HOJE), r => r.prev);
-  const aberto = R.filter(r => !r.pago && total(r) > 0);
+  const ym = S.finMes, R = recebiveis(), cur = HOJE.slice(0, 7), mesN = nomeMes(ym).toLowerCase();
+  const dp = r => r.pago ? (r.dataPago || '') : (r.prev || '');
   const sm = (a, f = total) => a.reduce((s, r) => s + f(r), 0);
+  const doMes = sortBy(R.filter(r => dp(r).slice(0, 7) === ym && (r.pago || total(r) > 0)), r => dp(r));
+  const caiu = doMes.filter(r => r.pago), falta = doMes.filter(r => !r.pago);
+  const Y = sm(caiu, ef), Z = sm(falta), X = Y + Z, pct = X ? Math.round(Y / X * 100) : 0;
+  const atrasAnt = ym === cur ? sortBy(R.filter(r => !r.pago && r.prev && r.prev < `${ym}-01` && total(r) > 0), r => r.prev) : [];
+  const aberto = R.filter(r => !r.pago && total(r) > 0);
   const top = `<div class="top"><div class="titulo">${nomeMes(ym)}<small>${ym.slice(0,4)}</small></div>
     <div class="top-acts"><button class="ib" data-act="finAnt" aria-label="Mês anterior">${ic('l')}</button><button class="ib" data-act="finProx" aria-label="Próximo mês">${ic('r')}</button></div></div>`;
-  const trabMes = S.plantoes.filter(p => p.data.slice(0,7) === ym), salMes = salarios().filter(x => x.ref === ym);
-  const mets = `<div class="mets">
-    <div class="met" style="grid-column:1/-1"><span>Trabalhado em ${nomeMes(ym).toLowerCase()}</span><b>${money(sm([...trabMes, ...salMes], ef))}</b><small>${trabMes.length} ${trabMes.length === 1 ? 'plantão feito' : 'plantões feitos'} no mês · ${hh(trabMes.reduce((x, p) => x + dur(p), 0))} (igual à agenda e ao relatório)</small></div>
-    <div class="met dest"><span>Recebido no mês</span><b>${money(sm(recMes, r => +r.valorPago || 0))}</b><small>${recMes.length} pagamento${recMes.length === 1 ? '' : 's'}</small></div>
-    <div class="met"><span>Previsto p/ receber</span><b>${money(sm(prevMes))}</b><small>${prevMes.length} pagamento${prevMes.length === 1 ? '' : 's'} com data em ${MESC[+ym.slice(5)-1]}</small></div>
-    <div class="met ${atras.length ? 'alerta' : ''}"><span>Atrasado</span><b>${money(sm(atras))}</b><small>${atras.length} pendente${atras.length === 1 ? '' : 's'}</small></div>
-    <div class="met"><span>Total em aberto</span><b>${money(sm(aberto))}</b><small>todos os meses</small></div></div>`;
-  const linha = r => { const l = loc(r.localId); const st = status(r); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><button class="g" style="text-align:left" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}</b><span class="mono">${rotulo(r)}${!r.pago && r.prev ? ` · pgto ${ddmm(r.prev)}` : ''}${r.pago ? ` · pago ${ddmm(r.dataPago)}` : ''}</span>${st === 'atrasado' ? `<span style="color:var(--ambar)"> · ${diffD(HOJE, r.prev)} dias de atraso</span>` : ''}</button><div class="v">${money(r.pago ? r.valorPago : total(r))}</div><button class="pc-pay ${r.pago ? 'on' : ''}" style="width:40px;height:40px;border:1px solid var(--linha2);border-radius:4px" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="Pagar">${ic('ok')}</button></div>`; };
-  // Nota / solicitação pendente
+  const linha = r => {
+    const l = loc(r.localId), st = status(r), tg = r.sal ? '' : tagP(r);
+    const quando = r.pago ? `caiu ${ddmm(r.dataPago)}` : !r.prev ? 'sem data' : st === 'atrasado' ? `<span style="color:var(--ambar)">atrasado · era ${ddmm(r.prev)}</span>` : `previsto ${ddmm(r.prev)}`;
+    const origem = r.sal ? `Salário de ${mesCurto(r.ref)}` : `plantão de ${ddmm(r.data)}`;
+    return `<div class="ln" style="--c:${r.sal ? l.cor : corP(r)}"><span class="dot"></span><button class="g" style="text-align:left" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><b>${esc(l.nome)}${tg ? ' · ' + esc(tg) : ''}</b><span>${origem} · ${quando}</span>${r.dividido ? `<span style="display:block">÷ ${esc(r.colega || 'colega')} · −${money(desconto(r))} do valor cheio ${money(r.valor)}</span>` : ''}</button><div class="v">${money(ef(r))}</div><button class="pc-pay ${r.pago ? 'on' : ''}" style="width:40px;height:40px;border:1px solid var(--linha2);border-radius:4px" data-act="${r.pago ? 'despagar' : 'pagar'}" data-id="${r.id}" aria-label="${r.pago ? 'Desfazer pagamento' : 'Marcar como pago'}">${ic('ok')}</button></div>`;
+  };
+  let html = top + `<div class="hero"><span>Em ${mesN} você recebe</span><b>${money(X)}</b>
+    <div class="hero-split"><div>Já caiu<b>${money(Y)}</b></div><div>Falta cair<b>${money(Z)}</b></div></div>
+    <div class="hero-bar"><span style="width:${pct}%"></span></div></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Conta pela data do pagamento. O que você trabalhou no mês fica na Agenda e nos Relatórios.</div>`;
+  if (atrasAnt.length) html += `<div class="h">Atrasados de meses anteriores<span class="sub" style="color:var(--ambar)">${money(sm(atrasAnt))}</span></div><div class="card" style="border-color:#F0D49A">${atrasAnt.map(linha).join('')}</div>`;
+  html += `<div class="h">Pagamentos de ${mesN}<span class="sub">${doMes.length}</span></div>` + (doMes.length ? `<div class="card">${doMes.map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento com data em ${mesN}.</div>`);
   const notaPend = sortBy(S.plantoes.filter(p => !p.pago && !p.notaSolicitada && loc(p.localId).precisaNota && p.data <= HOJE), p => p.data);
-  // Por local
-  const porLocal = locaisOrd().map(l => ({ l, itens: aberto.filter(r => r.localId === l.id) })).filter(x => x.itens.length);
-  let html = top + mets;
-  if (atras.length) html += `<div class="h">Atrasados<span class="sub">${atras.length} · ${money(sm(atras))}</span></div><div class="card">${atras.map(linha).join('')}</div>`;
   if (notaPend.length) html += `<div class="h">Solicitar pagamento<span class="sub">emitir nota</span></div><div class="card">${notaPend.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${l.cor}"><span class="dot"></span><div class="g"><b>${esc(l.nome)}</b><span class="mono">${rotulo(p)} · ${money(total(p))}</span></div><button class="btn sm" data-act="solicitar" data-id="${p.id}">Solicitado hoje</button></div>`; }).join('')}</div>`;
-  html += `<div class="h">Quanto cada local te deve</div>`;
+  const porLocal = locaisOrd().map(l => ({ l, itens: aberto.filter(r => r.localId === l.id) })).filter(x => x.itens.length);
+  html += `<div class="h">Em aberto por local<span class="sub">${money(sm(aberto))} · todos os meses</span></div>`;
   html += porLocal.length ? porLocal.map(({l, itens}) => {
     const at = itens.filter(r => r.prev && r.prev < HOJE), open = S.finOpen[l.id];
     return `<div class="card" style="border-left:4px solid ${l.cor}">
@@ -789,13 +803,6 @@ function vFin() {
       ${open ? `<div style="margin-top:8px">${sortBy(itens, r => r.prev || r.data || '').map(linha).join('')}</div>` : ''}
       <div class="btns" style="margin-top:10px"><button class="btn sm p" data-act="pagarLocal" data-id="${l.id}">${ic('ok')}Marcar como pagos</button></div></div>`;
   }).join('') : `<div class="vazio">Nada em aberto. Tudo recebido.</div>`;
-  const prevNaoAtr = sortBy(prevMes.filter(r => !(r.prev < HOJE)), r => r.prev);
-  html += `<div class="h">Previstos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(prevNaoAtr))}</span></div>` + (prevNaoAtr.length ? `<div class="card">${prevNaoAtr.map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento previsto para este mês.</div>`);
-  html += `<div class="h">Recebidos em ${nomeMes(ym).toLowerCase()}<span class="sub">${money(sm(recMes, r => +r.valorPago || 0))}</span></div>` + (recMes.length ? `<div class="card">${sortBy(recMes, r => r.dataPago).map(linha).join('')}</div>` : `<div class="vazio">Nenhum pagamento recebido neste mês.</div>`);
-  const divs = sortBy(S.plantoes.filter(p => p.dividido && p.data.slice(0,7) === ym), p => p.data);
-  if (divs.length) html += `<div class="h">Plantões divididos<span class="sub">−${money(divs.reduce((s, p) => s + desconto(p), 0))}</span></div><div class="card">${divs.map(p => { const l = loc(p.localId); return `<div class="ln" style="--c:${corP(p)}"><span class="dot"></span><button class="g" style="text-align:left" data-act="editP" data-id="${p.id}"><b>${esc(p.colega || 'Colega')}</b><span class="mono">${esc(l.nome)}${tagP(p) ? ' ' + esc(tagP(p)) : ''} · ${rotulo(p)}</span><span> · cheio ${money(p.valor)}</span></button><div class="v" style="color:var(--ambar)">−${money(desconto(p))}<small>você: ${money(total(p))}</small></div></div>`; }).join('')}</div>`;
-  const semPrev = S.plantoes.filter(p => !p.pago && !p.prev && total(p) > 0);
-  if (semPrev.length) html += `<div class="h">Sem data de pagamento<span class="sub">${money(sm(semPrev))}</span></div><div class="card">${sortBy(semPrev, p => p.data).map(linha).join('')}</div>`;
   return html;
 }
 
@@ -813,7 +820,11 @@ function periodoRel() {
 function dadosRel() {
   const R = S.rel, P = periodoRel();
   let ps, sals;
-  if (P.ciclo) {
+  const dp = r => r.pago ? (r.dataPago || '') : (r.prev || '');
+  if (!P.ciclo && R.base === 'pag' && R.tipo !== 'tudo') {
+    ps = S.plantoes.filter(p => dp(p) >= P.de && dp(p) <= P.ate && (!R.local || p.localId === R.local));
+    sals = salarios().filter(s => dp(s) >= P.de && dp(s) <= P.ate && (!R.local || s.localId === R.local));
+  } else if (P.ciclo) {
     ps = R.local && R.ciclo ? S.plantoes.filter(p => p.localId === R.local && p.prev === R.ciclo) : [];
     sals = R.local && R.ciclo ? salarios().filter(s => s.localId === R.local && s.prev === R.ciclo) : [];
   } else {
@@ -885,19 +896,20 @@ function vRel() {
   if (R.tipo === 'periodo') campos = `<div class="row"><label class="f" style="margin:0"><span>De</span><input class="in" type="date" data-rel="de" value="${R.de}"></label><label class="f" style="margin:0"><span>Até</span><input class="in" type="date" data-rel="ate" value="${R.ate}"></label></div>`;
   if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; if (R.local && cs.length && !cs.includes(R.ciclo)) R.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
   const filtro = `<label class="f" style="margin:0"><span>Local</span><select class="in" data-rel="local"><option value="">${R.tipo === 'ciclo' ? 'Escolha…' : 'Todos os locais'}</option>${locs.map(l => `<option value="${l.id}" ${l.id === R.local ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>`;
+  const pagBase = R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo);
   let html = `<div class="top"><div class="titulo">Relatórios</div></div>
     <div class="seg" style="margin-bottom:12px">${seg}</div>
-    <div class="relf">${filtro}${campos}</div>
+    <div class="relf">${filtro}${campos}${['mes','ano','periodo'].includes(R.tipo) ? `<div class="seg"><button class="${R.base !== 'pag' ? 'on' : ''}" data-act="relBase" data-v="trab">Data do plantão</button><button class="${R.base === 'pag' ? 'on' : ''}" data-act="relBase" data-v="pag">Data do pagamento</button></div>` : ''}</div>
     <div class="h">${esc(P.txt)}</div>
     <div class="mets">
-      <div class="met dest"><span>Total trabalhado</span><b>${money(z.trab)}</b><small>${z.n} ${z.n === 1 ? 'plantão' : 'plantões'}${sals.length ? ' + salário' : ''}</small></div>
+      <div class="met dest"><span>${pagBase ? 'Total do período' : 'Total trabalhado'}</span><b>${money(z.trab)}</b><small>${z.n} ${z.n === 1 ? 'plantão' : 'plantões'}${sals.length ? ' + salário' : ''}</small></div>
       <div class="met"><span>Recebido</span><b>${money(z.rec)}</b></div>
       <div class="met"><span>A receber</span><b>${money(z.aReceber)}</b></div>
       <div class="met ${z.atrasado ? 'alerta' : ''}"><span>Atrasado</span><b>${money(z.atrasado)}</b><small>${z.nAtr} pendente${z.nAtr === 1 ? '' : 's'}</small></div>
       <div class="met"><span>Horas</span><b>${hh(z.min)}</b><small>${z.dias} dia${z.dias === 1 ? '' : 's'} trabalhado${z.dias === 1 ? '' : 's'}</small></div>
       <div class="met"><span>Valor por hora</span><b>${money(z.vh)}</b></div>
     </div>
-    <div class="muted" style="font-size:12px;margin-top:8px">${P.ciclo ? 'Plantões cujo pagamento está previsto para a data do ciclo.' : 'Conta os plantões pela data em que foram feitos (igual à agenda). No Financeiro, “Previsto p/ receber” usa a data de pagamento.'}</div>
+    <div class="muted" style="font-size:12px;margin-top:8px">${P.ciclo ? 'Plantões cujo pagamento está previsto para a data do ciclo.' : pagBase ? 'Pela data do pagamento: igual ao Financeiro.' : R.tipo === 'tudo' ? 'Todos os plantões registrados.' : 'Pela data do plantão: igual à Agenda.'}</div>
     <div class="btns" style="margin-top:12px"><button class="btn" data-act="pdf">${ic('dl')}PDF</button><button class="btn" data-act="csvRel">${ic('dl')}CSV</button></div>`;
   const refMes = R.tipo === 'mes' ? R.mes : HOJE.slice(0,7);
   html += `<div class="h">Últimos 6 meses</div><div class="card chart">${chartMeses(refMes, R.local)}</div>`;
@@ -937,7 +949,7 @@ async function gerarPDF() {
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const ROXO = [107, 43, 214], TINTA = [23, 20, 31], CINZA = [91, 86, 112], W = 210, M = 14;
   doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(24); doc.setTextColor(...ROXO); doc.text('Plantonista', M, 20);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt, M, 27);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt + (R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo) ? ' (pela data do pagamento)' : ''), M, 27);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...CINZA);
   doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE)], W - M, 15, { align: 'right' });
   doc.setDrawColor(...ROXO); doc.setLineWidth(0.8); doc.line(M, 31, W - M, 31);
@@ -1592,6 +1604,8 @@ document.addEventListener('click', async e => {
     case 'solicitar': { const p = S.plantoes.find(x => x.id === id); await put('plantoes', { ...p, notaSolicitada: HOJE }); return toast('Solicitação registrada'); }
     case 'relTipo': { const ant = S.rel.tipo; S.rel.tipo = a.dataset.v; if (S.rel.tipo === 'ciclo' && !S.rel.local) { S.rel.local = locaisOrd()[0]?.id || ''; S.rel.autoLocal = true; S.rel.ciclo = ''; } if (ant === 'ciclo' && S.rel.tipo !== 'ciclo' && S.rel.autoLocal) { S.rel.local = ''; S.rel.autoLocal = false; } return render(); }
     case 'pdf': return gerarPDF();
+    case 'relBase': S.rel.base = a.dataset.v; return render();
+    case 'atualizar': return atualizarApp();
     case 'csvRel': { const { ps, P } = dadosRel(); return baixar(`plantonista-${P.txt.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`, csvDe(ps), 'text/csv;charset=utf-8'); }
     case 'csvTudo': return baixar(`plantonista-plantoes-${HOJE}.csv`, csvDe(sortBy(S.plantoes, p => p.data + p.inicio)), 'text/csv;charset=utf-8');
     case 'csvImp': return importarCSV();
@@ -1698,6 +1712,31 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S.
 /* =========================================================
    INÍCIO
    ========================================================= */
+/* ---------- Aviso de versão nova ---------- */
+const cmpVer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+let ultimaChecagem = 0;
+async function checaVersao() {
+  if (Date.now() - ultimaChecagem < 60000) return; ultimaChecagem = Date.now();
+  try {
+    const j = await (await fetch('version.json?t=' + Date.now(), { cache: 'no-store' })).json();
+    if (j && j.versao && cmpVer(j.versao, VERSAO) > 0 && !document.querySelector('.upd')) {
+      const d = document.createElement('div'); d.className = 'upd';
+      d.innerHTML = `<b>Nova versão do Plantonista (${esc(j.versao)})</b><p>${esc(j.notas || 'Melhorias e correções.')}<br>Toque em Atualizar. Se continuar aparecendo, feche o app (arraste para cima) e abra de novo.</p><div class="btns"><button class="btn p" data-act="atualizar">Atualizar agora</button><button class="btn" data-upd-x>Depois</button></div>`;
+      d.querySelector('[data-upd-x]').onclick = () => d.remove();
+      d.querySelector('[data-act=atualizar]').onclick = atualizarApp;
+      document.body.appendChild(d);
+    }
+  } catch (e) {}
+}
+async function atualizarApp() {
+  try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}
+  try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update(); } catch (e) {}
+  location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checaVersao(); });
+setInterval(checaVersao, 30 * 60000);
+setTimeout(checaVersao, 3000);
+
 async function entrar(u) {
   S.uid = u.uid; S.user = (u.email || '').replace(DOMINIO, '');
   if (localStorage.getItem(LS('perfil:' + u.uid))) { listen(); return render(); }

@@ -1,4 +1,4 @@
-const VERSION = 'plantonista-v10';
+const VERSION = 'plantonista-v11';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'];
 
 self.addEventListener('install', e => {
@@ -14,6 +14,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(r.url);
   const sdk = u.hostname === 'www.gstatic.com' && u.pathname.startsWith('/firebasejs/');
   if (u.origin !== location.origin && !sdk) return;
+  if (u.pathname.endsWith('version.json')) return; // sempre da internet: é o que avisa que há versão nova
   if (r.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('index.html')) {
     // versão mais nova da internet (até 4 s); sem internet ou lenta, abre a cópia salva
     e.respondWith((async () => {
