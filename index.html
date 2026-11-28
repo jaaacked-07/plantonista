@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Plantonista</title>
 <meta name="theme-color" content="#F7F5F0">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,14 +14,14 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Lora:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --roxo:#6B2BD6;--roxo-esc:#4E1BA3;--roxo-cl:#EFE8FC;--roxo-md:#D9CCF6;
   --papel:#F7F5F0;--branco:#FFFFFF;--tinta:#17141F;--cinza:#5B5670;--cinza2:#8C8799;
   --linha:#E3DED2;--linha2:#ECE8DF;
   --ambar:#9A5B00;--ambar-cl:#FFF1D6;--verde:#1F7A4D;--verde-cl:#E2F2E8;--verm:#B42318;--verm-cl:#FDECEA;
-  --mono:'JetBrains Mono',ui-monospace,monospace;--cond:Inter,system-ui,sans-serif;--serif:'Playfair Display',Georgia,'Times New Roman',serif;--mao:'Satisfy',cursive;
+  --mono:'JetBrains Mono',ui-monospace,monospace;--cond:Inter,system-ui,sans-serif;--serif:'Lora',Georgia,'Times New Roman',serif;--mao:'Satisfy',cursive;
   --sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -71,7 +71,10 @@ label.f>span{display:block;font-family:var(--cond);font-weight:600;font-size:11.
 textarea.in{height:auto;min-height:70px;padding:10px 12px;resize:vertical}
 select.in{background-image:linear-gradient(45deg,transparent 50%,var(--cinza) 50%),linear-gradient(135deg,var(--cinza) 50%,transparent 50%);background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
 .in:focus{border-color:var(--roxo);box-shadow:0 0 0 3px var(--roxo-cl)}
-input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--mono);font-size:15px}
+input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--mono);font-size:16px}
+html,body{overflow-x:hidden;max-width:100%}
+nav.bot{transform:translateZ(0);-webkit-transform:translateZ(0)}
+input,select,textarea{font-size:16px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .sw{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--linha2)}
@@ -212,14 +215,17 @@ input[type=date].in,input[type=time].in,input[type=month].in{font-family:var(--m
 .pr:last-child{border-bottom:0}
 .pr .d{color:var(--cinza)}.pr .v{text-align:right;font-weight:600}
 .pr .s{text-align:right;font-size:12px;display:flex;align-items:center;justify-content:flex-end;gap:4px}
-.pr.pago .v,.pr.pago .s{color:var(--verde)}
-.pr.aberto .v,.pr.aberto .s{color:#A86400}
-.pr.atrasado .v,.pr.atrasado .s{color:var(--verm)}
+.pr .v{color:var(--tinta)}.pr .s{color:var(--cinza)}
+.pr.atrasado .s{color:var(--tinta);font-weight:600}
 .gcard{background:var(--branco);border:1px solid var(--linha);border-left:5px solid var(--lc);border-radius:4px;padding:12px 14px}
 .gcard+.gcard{margin-top:8px}
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
-.gh>b{font-weight:600;font-size:15.5px;color:var(--c)}
+.gh>b{font-weight:600;font-size:15.5px;color:var(--tinta)}
+.gh>b .tagp{vertical-align:2px;margin-left:4px}
 .gh>span{font-size:12.5px;color:var(--cinza)}
+.det{border:1px solid var(--linha);border-radius:4px;background:var(--branco);padding:10px 12px;margin-bottom:12px}
+.det summary{font-size:14px;color:var(--cinza);cursor:pointer}
+.det summary span{color:var(--tinta);font-family:var(--mono)}
 .tagp{display:inline-block;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.3px;color:var(--c,var(--roxo));border:1px solid var(--c,var(--roxo));border-radius:3px;padding:0 5px;line-height:16px;vertical-align:2px}
 .pc-ed{width:38px;border-left:1px solid var(--linha2);display:flex;align-items:center;justify-content:center;color:var(--cinza2)}
 .pc-ed svg{width:17px;height:17px}
@@ -359,9 +365,9 @@ const FB_CFG = {
 };
 const FBV = '10.14.1';
 const DOMINIO = '@plantonista.app';
-const VERSAO = '1.8';
+const VERSAO = '1.9';
 let HAVIA_CACHE = false; try { HAVIA_CACHE = Object.keys(localStorage).some(k => k.startsWith('plantonista:cache:')); } catch (e) {} // já usava o app antes desta versão
-const NOTAS_VERSAO = 'Gráfico com o valor recebido e em aberto de cada local; por especialidade abre a lista ao tocar; PDF com data e hora de geração.';
+const NOTAS_VERSAO = 'Relatórios mais limpos: tudo pela data do plantão, locais e especialidades abrem ao tocar, menos cores. Fonte dos títulos mais legível e barra inferior fixa.';
 
 /* ---------- Ícones ---------- */
 const IC = {
@@ -863,22 +869,16 @@ function periodoRel() {
   if (R.tipo === 'mes') return { de:`${R.mes}-01`, ate:`${R.mes}-31`, txt:`${nomeMes(R.mes)} de ${R.mes.slice(0,4)}` };
   if (R.tipo === 'ano') return { de:`${R.ano}-01-01`, ate:`${R.ano}-12-31`, txt:`Ano de ${R.ano}` };
   if (R.tipo === 'periodo') return { de:R.de, ate:R.ate, txt:`${ddmmaa(R.de)} a ${ddmmaa(R.ate)}` };
-  if (R.tipo === 'ciclo') return { ciclo:true, txt: R.ciclo ? `Ciclo pago em ${ddmmaa(R.ciclo)}` : 'Ciclo de pagamento' };
+  
   return { de:'0000-00-00', ate:'9999-99-99', txt:'Histórico completo' };
 }
 function dadosRel() {
   const R = S.rel, P = periodoRel();
   let ps, sals;
-  const dp = r => r.pago ? (r.dataPago || '') : (r.prev || '');
-  if (!P.ciclo && R.base === 'pag' && R.tipo !== 'tudo') {
-    ps = S.plantoes.filter(p => dp(p) >= P.de && dp(p) <= P.ate && (!R.local || p.localId === R.local));
-    sals = salarios().filter(s => dp(s) >= P.de && dp(s) <= P.ate && (!R.local || s.localId === R.local));
-  } else if (P.ciclo) {
-    ps = R.local && R.ciclo ? S.plantoes.filter(p => p.localId === R.local && p.prev === R.ciclo) : [];
-    sals = R.local && R.ciclo ? salarios().filter(s => s.localId === R.local && s.prev === R.ciclo) : [];
-  } else {
-    ps = S.plantoes.filter(p => p.data >= P.de && p.data <= P.ate && (!R.local || p.localId === R.local));
-    sals = salarios().filter(s => `${s.ref}-01` >= P.de.slice(0,7) + '-01' && `${s.ref}-01` <= P.ate && (!R.local || s.localId === R.local));
+  const lf = R.tipo === 'mes' ? '' : R.local;
+  {
+    ps = S.plantoes.filter(p => p.data >= P.de && p.data <= P.ate && (!lf || p.localId === lf));
+    sals = salarios().filter(s => `${s.ref}-01` >= P.de.slice(0,7) + '-01' && `${s.ref}-01` <= P.ate && (!lf || s.localId === lf));
   }
   return { P, ps: sortBy(ps, p => p.data + p.inicio), sals };
 }
@@ -941,13 +941,13 @@ function grupoRel(items) {
 }
 const triHTML = (g, big) => `<div class="tri ${big ? 'big' : ''}"><div class="t1"><span>${rotTot()}</span><b>${money(g.tot)}</b></div><div class="t2"><span>Recebido</span><b>${money(g.rec)}</b></div><div class="t3"><span>Em aberto</span><b>${money(g.ab)}</b></div></div>`;
 const cardGrupo = (nome, cor, g, lcor) => `<div class="gcard" style="--c:${cor};--lc:${lcor || cor}"><div class="gh"><b>${esc(nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${g.atr ? ` · <b style="color:var(--verm)">${money(g.atr)} atrasado</b>` : ''}</span></div>${triHTML(g)}<div class="rbar"><span style="width:${g.tot ? Math.round(g.rec / g.tot * 100) : 0}%"></span></div></div>`;
-function listaGrupo(x, mostraTag, recolhe) {
+function listaGrupo(x, mostraTag, recolhe, pref) {
   const g = x.g, linhas = sortBy(x.it, r => r.sal ? r.ref + '-99' : r.data + r.inicio).map(r => {
     const st = status(r), tg = !r.sal && mostraTag ? tagP(r) : '';
-    return `<button class="pr ${st}" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><span class="d mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data) + ' ' + SEMC[dow(r.data)]}</span><span class="t">${tg ? `<span class="tagp" style="--c:${corTag(tg)}">${esc(tg)}</span>` : ''}${r.dividido ? `<span class="muted">÷ ${esc(r.colega || 'colega')}</span>` : ''}</span><span class="v mono">${money(ef(r))}</span><span class="s">${st === 'pago' ? '✓ pago' : st === 'atrasado' ? '<i class="exc">!</i> atrasado' : 'em aberto'}</span></button>`;
+    return `<button class="pr ${st}" ${r.sal ? '' : `data-act="editP" data-id="${r.id}"`}><span class="d mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data) + ' ' + SEMC[dow(r.data)]}</span><span class="t">${tg ? `<span class="tagp" style="--c:${corTag(tg)}">${esc(tg)}</span>` : ''}${r.dividido ? `<span class="muted">÷ ${esc(r.colega || 'colega')}</span>` : ''}</span><span class="v mono">${money(ef(r))}</span><span class="s">${st === 'pago' ? '✓ pago' : st === 'atrasado' ? '! atrasado' : 'em aberto'}</span></button>`;
   }).join('');
-  const k = x.nome, ab = !recolhe || (S.espOpen || {})[k];
-  return `<div class="glist" style="--c:${x.cor};--lc:${x.lcor || x.cor}">${recolhe ? `<button class="gtog" data-act="espTog" data-id="${esc(k)}">` : '<div>'}<div class="gh"><b>${esc(x.nome)}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${recolhe ? ' ' + ic(ab ? 'up' : 'dn') : ''}</span></div>
+  const k = (pref || '') + x.nome, ab = !recolhe || (S.espOpen || {})[k];
+  return `<div class="glist" style="--lc:${x.lcor || x.cor}">${recolhe ? `<button class="gtog" data-act="espTog" data-id="${esc(k)}">` : '<div>'}<div class="gh"><b>${esc(x.lnome || x.nome)}${x.tag ? ` <span class="tagp" style="--c:${x.cor}">${esc(x.tag)}</span>` : ''}</b><span>${g.n} ${g.n === 1 ? 'plantão' : 'plantões'} · ${hh(g.min)}${recolhe ? ' ' + ic(ab ? 'up' : 'dn') : ''}</span></div>
     <div class="gsum"><span><b>${rotTot()}: ${money(g.tot)}</b></span><span class="cr">Recebido: ${money(g.rec)}</span><span class="ca">Em aberto: ${money(g.ab)}</span></div>${recolhe ? '</button>' : '</div>'}
     ${ab ? `<div class="prs">${linhas}</div>` : ''}</div>`;
 }
@@ -957,7 +957,7 @@ function gruposLocal(ps, sals) {
 }
 function gruposEsp(ps) {
   const m = {}; ps.forEach(p => { const k = p.localId + '|' + tagP(p); (m[k] ||= []).push(p); });
-  return sortBy(Object.entries(m).map(([k, a]) => { const i = k.indexOf('|'), l = loc(k.slice(0, i)), t = k.slice(i + 1); return { nome: l.nome + (t ? ' · ' + t : ''), tag: t, cor: t ? corTag(t) : l.cor, lcor: l.cor, it: a, g: grupoRel(a) }; }), x => -x.g.tot);
+  return sortBy(Object.entries(m).map(([k, a]) => { const i = k.indexOf('|'), l = loc(k.slice(0, i)), t = k.slice(i + 1); return { nome: l.nome + (t ? ' · ' + t : ''), lnome: l.nome, tag: t, cor: t ? corTag(t) : l.cor, lcor: l.cor, it: a, g: grupoRel(a) }; }), x => -x.g.tot);
 }
 // Gráfico do período escolhido: por local (barras) e, se o período tiver mais de um mês, mês a mês
 function chartPeriodo(ps, sals, paraPDF) {
@@ -1004,18 +1004,18 @@ function vRel() {
   if (S.rel.tipo === 'ciclo' && S.rel.local) { const cs = ciclosDoLocal(S.rel.local); if (cs.length && !cs.includes(S.rel.ciclo)) S.rel.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; }
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
   const locs = locaisOrd();
-  const seg = [['mes','Mês'],['ciclo','Ciclo'],['ano','Ano'],['periodo','Período'],['tudo','Tudo']].map(([v, t]) => `<button class="${R.tipo === v ? 'on' : ''}" data-act="relTipo" data-v="${v}">${t}</button>`).join('');
+  const seg = [['mes','Mês'],['ano','Ano'],['periodo','Período'],['tudo','Tudo']].map(([v, t]) => `<button class="${R.tipo === v ? 'on' : ''}" data-act="relTipo" data-v="${v}">${t}</button>`).join('');
   let campos = '';
   if (R.tipo === 'mes') campos = `<label class="f" style="margin:0"><span>Mês</span><input class="in" type="month" data-rel="mes" value="${R.mes}"></label>`;
   if (R.tipo === 'ano') { const anos = [...new Set([HOJE.slice(0,4), ...S.plantoes.map(p => p.data.slice(0,4))])].sort().reverse(); campos = `<label class="f" style="margin:0"><span>Ano</span><select class="in" data-rel="ano">${anos.map(a => `<option ${a === R.ano ? 'selected' : ''}>${a}</option>`).join('')}</select></label>`; }
   if (R.tipo === 'periodo') campos = `<div class="row"><label class="f" style="margin:0"><span>De</span><input class="in" type="date" data-rel="de" value="${R.de}"></label><label class="f" style="margin:0"><span>Até</span><input class="in" type="date" data-rel="ate" value="${R.ate}"></label></div>`;
   if (R.tipo === 'ciclo') { const cs = R.local ? ciclosDoLocal(R.local) : []; if (R.local && cs.length && !cs.includes(R.ciclo)) R.ciclo = cs.slice().reverse().find(c => c >= HOJE) || cs[0]; campos = R.local ? `<label class="f" style="margin:0"><span>Ciclo (data de pagamento)</span><select class="in" data-rel="ciclo"><option value="">Escolha…</option>${cs.map(c => `<option value="${c}" ${c === R.ciclo ? 'selected' : ''}>Pago em ${ddmmaa(c)}</option>`).join('')}</select></label>` : `<div class="muted">Escolha um local para ver os ciclos de pagamento.</div>`; }
   const filtro = `<label class="f" style="margin:0"><span>Local</span><select class="in" data-rel="local"><option value="">${R.tipo === 'ciclo' ? 'Escolha…' : 'Todos os locais'}</option>${locs.map(l => `<option value="${l.id}" ${l.id === R.local ? 'selected' : ''}>${esc(l.nome)}</option>`).join('')}</select></label>`;
-  const pagBase = R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo);
+  const pagBase = false;
   const G = grupoRel([...ps, ...sals]);
   let html = `<div class="top"><div class="titulo">Relatórios</div></div>
     <div class="seg" style="margin-bottom:12px">${seg}</div>
-    <div class="relf">${filtro}${campos}${['mes','ano','periodo'].includes(R.tipo) ? `<div class="seg"><button class="${R.base !== 'pag' ? 'on' : ''}" data-act="relBase" data-v="trab">Data do plantão</button><button class="${R.base === 'pag' ? 'on' : ''}" data-act="relBase" data-v="pag">Data do pagamento</button></div>` : ''}</div>
+    <div class="relf">${R.tipo === 'mes' ? '' : filtro}${campos}</div>
     <div class="h" style="font-size:26px">${esc(P.txt)}</div>
     ${triHTML(G, true)}
     <div class="rbar"><span style="width:${G.tot ? Math.round(G.rec / G.tot * 100) : 0}%"></span></div>
@@ -1024,8 +1024,8 @@ function vRel() {
     <div class="btns" style="margin-top:12px"><button class="btn" data-act="pdf">${ic('dl')}PDF</button><button class="btn" data-act="csvRel">${ic('dl')}CSV</button></div>`;
   if (ps.length || sals.length) html += `<div class="h">Recebido × em aberto</div><div class="card chart">${chartPeriodo(ps, sals)}</div>`;
   const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
-  if (gl.length) html += `<div class="h">Por local</div>` + gl.map(x => listaGrupo(x, true)).join('');
-  if (ge.length > 1 || (ge[0] && ge[0].tag)) html += `<div class="h">Por especialidade</div>` + ge.map(x => listaGrupo(x, false, true)).join('');
+  if (gl.length) html += `<div class="h">Por local</div>` + gl.map(x => listaGrupo(x, true, true, 'L:')).join('');
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) html += `<div class="h">Por especialidade</div>` + ge.map(x => listaGrupo(x, false, true, 'E:')).join('');
   const atr = [...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE);
   if (atr.length) html += `<div class="h">Pagamentos atrasados</div><div class="card tbw"><table class="tb"><thead><tr><th>Local</th><th>Referente</th><th>Previsto</th><th class="r">Atraso</th><th class="r">Valor</th></tr></thead><tbody>${sortBy(atr, r => r.prev).map(r => `<tr><td>${esc(loc(r.localId).nome)}</td><td class="mono">${r.sal ? 'Salário ' + mesCurto(r.ref) : ddmm(r.data)}</td><td class="mono">${ddmm(r.prev)}</td><td class="r">${diffD(HOJE, r.prev)}d</td><td class="r">${money(total(r))}</td></tr>`).join('')}</tbody></table></div>`;
   if (R.tipo === 'tudo' || R.tipo === 'ano') {
@@ -1049,12 +1049,12 @@ async function gerarPDF() {
   if (!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable)) { toast('Preparando o PDF…'); try { await carregaPDF(); } catch (e) { return toast('Não foi possível preparar o PDF. Confira a conexão.'); } }
   const R = S.rel, { P, ps, sals } = dadosRel(), z = resumo(ps, sals), linhas = linhasLocal(ps, sals);
   const atr = sortBy([...ps, ...sals].filter(r => !r.pago && r.prev && r.prev < HOJE), r => r.prev);
-  const lnome = R.local ? loc(R.local).nome : 'Todos os locais';
+  const lnome = R.local && R.tipo !== 'mes' ? loc(R.local).nome : 'Todos os locais';
   const agora = new Date(), horaGer = `${p2(agora.getHours())}:${p2(agora.getMinutes())}`;
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const ROXO = [107, 43, 214], TINTA = [23, 20, 31], CINZA = [91, 86, 112], W = 210, M = 14;
   doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(24); doc.setTextColor(...ROXO); doc.text('Plantonista', M, 20);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt + (R.base === 'pag' && ['mes','ano','periodo'].includes(R.tipo) ? ' (pela data do pagamento)' : ''), M, 27);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text('Relatório de plantões · ' + P.txt + '', M, 27);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...CINZA);
   doc.text([lnome, 'Usuário: ' + S.user, 'Gerado em ' + ddmmaa(HOJE) + ' às ' + horaGer], W - M, 15, { align: 'right' });
   doc.setDrawColor(...ROXO); doc.setLineWidth(0.8); doc.line(M, 31, W - M, 31);
@@ -1088,13 +1088,19 @@ async function gerarPDF() {
   const linhaG = x => [x.nome, x.g.n, hh(x.g.min), money(x.g.tot), money(x.g.rec), money(x.g.ab)];
   const cab = (a) => [a, 'Plantões', 'Horas', rotTot(), 'Recebido', 'Em aberto'];
   const gl = gruposLocal(ps, sals), ge = gruposEsp(ps);
-  if (gl.length) { secao('Por local'); tabela(cab('Local'), gl.map(linhaG), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(gl[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); }
-  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols, didParseCell: d => { if (d.section === 'body' && d.column.index === 0) { d.cell.styles.textColor = hexRgb(ge[d.row.index].cor); d.cell.styles.fontStyle = 'bold'; } } }); 
-    ge.forEach(x => { if (y > 262) { doc.addPage(); y = 18; } doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...hexRgb(x.cor)); doc.text(`${x.nome.replace(' · ', ' - ')}  ·  ${rotTot()}: ${money(x.g.tot)}`, M, y); y += 1.5;
-      const it = sortBy(x.it, r => r.data + r.inicio);
-      tabela(['Data', 'Horário', 'Valor', 'Situação'], it.map(r => { const st = status(r); return [ddmmaa(r.data) + ' ' + SEMC[dow(r.data)], r.inicio + '–' + r.fim, money(ef(r)), st === 'pago' ? 'Pago ' + ddmmaa(r.dataPago) : st === 'atrasado' ? 'Atrasado (era ' + ddmmaa(r.prev) + ')' : 'Em aberto' + (r.prev ? ' · pgto ' + ddmmaa(r.prev) : '')]; }),
-        { styles: { ...base.styles, fontSize: 8 }, columnStyles: { 2: dir }, didParseCell: d => { if (d.section === 'body' && (d.column.index === 2 || d.column.index === 3)) { const st = status(it[d.row.index]); d.cell.styles.textColor = st === 'pago' ? [31, 122, 77] : st === 'atrasado' ? [180, 35, 24] : [176, 106, 0]; d.cell.styles.fontStyle = 'bold'; } } }); y -= 3; });
-    y += 3; }
+  const listasPDF = (grupos, mostraTag) => grupos.forEach(x => {
+    if (y > 258) { doc.addPage(); y = 18; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...TINTA); doc.text(x.nome.replace(' · ', ' - '), M, y);
+    doc.setFontSize(8.5); const t1 = `${rotTot()}: ${money(x.g.tot)}`, t2 = `Recebido: ${money(x.g.rec)}`, t3 = `Em aberto: ${money(x.g.ab)}`;
+    let xx = M; doc.text(t1, xx, y + 4.5); xx += doc.getTextWidth(t1) + 6; doc.setTextColor(31, 122, 77); doc.text(t2, xx, y + 4.5); xx += doc.getTextWidth(t2) + 6; doc.setTextColor(176, 106, 0); doc.text(t3, xx, y + 4.5);
+    y += 6;
+    const it = sortBy(x.it, r => r.sal ? r.ref + '-99' : r.data + r.inicio);
+    tabela(['Data', mostraTag ? 'Especialidade' : 'Horário', 'Valor', 'Situação'], it.map(r => { const st = status(r); return [r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data) + ' ' + SEMC[dow(r.data)], r.sal ? '' : mostraTag ? (tagP(r) || '—') : r.inicio + '–' + r.fim, money(ef(r)), (st === 'pago' ? 'Pago ' + ddmmaa(r.dataPago) : st === 'atrasado' ? 'Atrasado (era ' + ddmmaa(r.prev) + ')' : 'Em aberto' + (r.prev ? ' · pgto ' + ddmmaa(r.prev) : '')) + (r.dividido ? ' · dividido com ' + (r.colega || 'colega') : '')]; }),
+      { styles: { ...base.styles, fontSize: 8 }, columnStyles: { 2: dir }, didParseCell: d => { if (d.section === 'body' && d.column.index === 3 && status(it[d.row.index]) === 'atrasado') d.cell.styles.fontStyle = 'bold'; } });
+    y -= 3;
+  });
+  if (gl.length) { secao('Por local'); tabela(cab('Local'), gl.map(linhaG), { columnStyles: corCols }); listasPDF(gl, true); y += 3; }
+  if (ge.length > 1 || (ge[0] && ge[0].tag)) { secao('Por especialidade'); tabela(cab('Local - especialidade'), ge.map(x => linhaG({ ...x, nome: x.nome.replace(' · ', ' - ') })), { columnStyles: corCols }); listasPDF(ge, false); y += 3; }
   if (sals.length) { secao('Salários'); tabela(['Local', 'Referente', 'Previsto', 'Status', 'Valor'], sals.map(s => [loc(s.localId).nome, mesCurto(s.ref), ddmmaa(s.prev), ST_TXT[status(s)] + (s.pago ? ' em ' + ddmmaa(s.dataPago) : ''), money(s.pago ? s.valorPago : s.valor)]), { columnStyles: { 4: dir } }); }
   if (atr.length) { secao('Pagamentos atrasados'); tabela(['Local', 'Referente', 'Previsto', 'Atraso', 'Valor'], atr.map(r => [loc(r.localId).nome, r.sal ? 'Salário ' + mesCurto(r.ref) : ddmmaa(r.data), ddmmaa(r.prev), diffD(HOJE, r.prev) + ' dias', money(total(r))]), { columnStyles: { 3: dir, 4: dir }, headStyles: { ...base.headStyles, fillColor: [255, 241, 214], textColor: [154, 91, 0] } }); }
   const divs = ps.filter(p => p.dividido);
@@ -1334,8 +1340,10 @@ function formPlantao(id, preset = {}) {
       </div>
     </div>
     <label class="f" data-extra-desc><span>Descrição do adicional</span><input class="in" name="extraDesc" value="${esc(p.extraDesc || '')}" placeholder="Hora extra, produtividade…"></label>
-    <div class="row"><label class="f"><span>Pagamento previsto</span><input class="in" type="date" name="prev" value="${p.prev || ''}"></label>
-    <label class="f" data-nota-sol><span>Pagamento solicitado</span><input class="in" type="date" name="notaSolicitada" value="${p.notaSolicitada || ''}"></label></div>
+    <details class="det"><summary>Pagamento: <span data-prevtxt></span></summary>
+      <div class="muted" style="font-size:12px;margin:6px 0 8px">Calculado pela regra do local (Ajustes). Só mude se este plantão for pago em outra data.</div>
+      <div class="row"><label class="f"><span>Data do pagamento</span><input class="in" type="date" name="prev" value="${p.prev || ''}"></label>
+      <label class="f" data-nota-sol><span>Pagamento solicitado</span><input class="in" type="date" name="notaSolicitada" value="${p.notaSolicitada || ''}"></label></div></details>
     <label class="f"><span>Observação</span><textarea class="in" name="nota" rows="2">${esc(p.nota || '')}</textarea></label>
     <div class="card" style="padding:4px 14px;margin-bottom:12px">
       <div class="sw"><div class="t">★ Importante</div>${tg('importante', p.importante)}</div>
@@ -1365,10 +1373,12 @@ function formPlantao(id, preset = {}) {
     const des = Math.max(0, num(f.valor.value) - num(f.parte.value));
     b.querySelector('[data-div-txt]').textContent = dv ? `Desconto de ${money(des)} para ${f.colega.value.trim() || 'o colega'} · você recebe ${money(num(f.parte.value) + num(f.extra.value))}` : '';
   };
-  const recalc = () => { if (!prevManual) f.prev.value = prevPag(loc(f.localId.value), f.data.value); };
+  const prevTxt = () => { const t = b.querySelector('[data-prevtxt]'); if (t) t.textContent = f.prev.value ? ddmmaa(f.prev.value) : 'sem data (local sem regra)'; };
+  const recalc = () => { if (!prevManual) f.prev.value = prevPag(loc(f.localId.value), f.data.value); prevTxt(); };
+  setTimeout(prevTxt, 0);
   f.localId.onchange = () => { recalc(); ui(); };
   f.data.onchange = () => { recalc(); if (f.rep && f.rep.value === 'datas') datas = [f.data.value]; renderMini(); repTxt(); };
-  f.prev.oninput = () => { prevManual = true; };
+  f.prev.oninput = () => { prevManual = true; prevTxt(); };
   f.inicio.oninput = f.fim.oninput = f.extra.oninput = f.parte.oninput = f.colega.oninput = ui;
   let parteAuto = !p.dividido;
   f.parte.addEventListener('input', () => parteAuto = false);
